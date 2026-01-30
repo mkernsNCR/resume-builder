@@ -554,18 +554,27 @@ export default function Home() {
                 <span className="text-sm font-medium">Live Preview</span>
               </div>
               <ScrollArea className="flex-1">
-                <div className="p-6 flex justify-center" ref={printRef}>
+                <div className="p-6 flex justify-center">
                   <div 
-                    className="origin-top"
+                    className="relative"
                     style={{ 
-                      transform: 'scale(0.65)',
-                      width: '816px',
-                      height: '1056px',
-                      boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-                      border: '1px solid #e5e7eb',
+                      width: `${816 * 0.65}px`,
+                      height: `${1056 * 0.65}px`,
                     }}
                   >
-                    <ResumePreview content={content} template={template} />
+                    <div 
+                      ref={printRef}
+                      className="absolute top-0 left-0 origin-top-left"
+                      style={{ 
+                        transform: 'scale(0.65)',
+                        width: '816px',
+                        height: '1056px',
+                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                        border: '1px solid #e5e7eb',
+                      }}
+                    >
+                      <ResumePreview content={content} template={template} />
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
