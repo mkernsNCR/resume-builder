@@ -406,6 +406,14 @@ export default function Home() {
                     <Palette className="w-3.5 h-3.5 mr-1" />
                     Template
                   </TabsTrigger>
+                  <TabsTrigger
+                    value="preview"
+                    className="text-xs lg:hidden"
+                    data-testid="main-tab-preview"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1" />
+                    Preview
+                  </TabsTrigger>
                 </TabsList>
 
                 <Button
@@ -496,6 +504,24 @@ export default function Home() {
                         onSelectTemplate={setTemplate}
                         previewContent={content}
                       />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="preview" className="m-0 lg:hidden">
+                    <div className="flex flex-col items-center">
+                      <div className="text-center mb-4">
+                        <h2 className="text-lg font-semibold mb-1">
+                          Live Preview
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          See how your resume looks in real-time
+                        </p>
+                      </div>
+                      <div className="w-full overflow-auto pb-4">
+                        <div className="transform scale-[0.5] origin-top mx-auto" style={{ width: "fit-content" }}>
+                          <ResumePreview content={content} template={template} />
+                        </div>
+                      </div>
                     </div>
                   </TabsContent>
                 </div>

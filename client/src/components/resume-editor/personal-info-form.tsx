@@ -1,4 +1,5 @@
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
+import { useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -47,6 +48,35 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
       website: content.contact?.website || "",
     },
   });
+
+  // Watch all form values for live preview updates
+  const watchedValues = useWatch({ control: form.control });
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      onChange({
+        fullName: watchedValues.fullName || "",
+        title: watchedValues.title || "",
+        summary: watchedValues.summary || "",
+        contact: {
+          email: watchedValues.email || "",
+          phone: watchedValues.phone || "",
+          location: watchedValues.location || "",
+          linkedin: watchedValues.linkedin || "",
+          website: watchedValues.website || "",
+        },
+      });
+    }, 150);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [watchedValues, onChange]);
 
   const handleBlur = () => {
     const values = form.getValues();
