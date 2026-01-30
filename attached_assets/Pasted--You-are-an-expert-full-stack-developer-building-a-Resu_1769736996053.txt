@@ -1,0 +1,41 @@
+```
+You are an expert full-stack developer building a Resume Builder web application on Repl.it. Build production-ready code with proper error handling and documentation.
+
+PROJECT: Create app that (1) uploads resumes PDF/DOCX, (2) extracts text and displays it, (3) provides forms to manually structure data, (4) applies professional templates, (5) exports as PDF/DOCX/HTML.
+
+STACK: Frontend-React18+TypeScript+TailwindCSS+ReactHookForm+Zustand+ReactPDF+html2canvas+jsPDF. Backend-Node+Express+TypeScript+Multer+pdf-parse+mammoth+SQLite+Prisma.
+
+STRUCTURE: resume-builder/{server/{src/{config,controllers,middleware,services,routes,types},uploads,prisma/schema.prisma},client/{src/{components,pages,services,templates,types,store}}}
+
+SCHEMA: Prisma/SQLite Resume model{id,fileName,extractedText,uploadedAt,updatedAt,personalInfo(JSON),summary,experience(JSON),education(JSON),skills(JSON),certifications(JSON),projects(JSON),customSections(JSON),templateId,theme(JSON)}
+
+TEXT-EXTRACTION: Use pdf-parse for PDF, mammoth for DOCX to extract plain text. Store in extractedText field. Display in textarea for users to reference while filling forms.
+
+COMPONENTS: UploadResume(drag-drop+validation+progress), ExtractedTextDisplay(scrollable-textarea+copy-button), ResumeBuilder(tabbed-interface with sections), Editor forms(PersonalInfoForm,ExperienceForm,EducationForm,SkillsForm,ProjectsForm,CertificationsForm using ReactHookForm+validation+auto-save), TemplateSelector(grid+preview+apply), ThemeCustomizer(color-picker+font-selector+spacing), ExportModal(format-selection+download)
+
+FORMS-STRUCTURE: PersonalInfo{fullName,email,phone,location,linkedIn,github,website}. Experience{company,position,location,startDate,endDate,description,technologies}[array with add/remove]. Education{institution,degree,field,graduationDate,gpa}[array]. Skills{categories[{name,items[]}]}. Projects{name,description,technologies[],link}[array]. Certifications{name,issuer,date}[array].
+
+TEMPLATES: 5 React components-Modern(two-column+sidebar+color-accent), Classic(single-column+traditional+b&w), Technical(GitHub/portfolio-emphasis+skills-focus), Executive(minimal+high-level+professional), Creative(unique-layout+design-freedom). Each accepts{data:ParsedResume,theme:Theme} and renders print-ready HTML.
+
+THEME: {primaryColor,secondaryColor,fontFamily,headingFont,fontSize{heading,subheading,body},spacing:'compact'|'normal'|'relaxed'}
+
+EXPORT: PDF(render template to hidden div with print styles, html2canvas to capture, jsPDF to generate with proper page breaks). DOCX(use docx library with proper styling, ATS-compatible formatting). HTML(standalone file with inline CSS, responsive, self-contained).
+
+API-ENDPOINTS: POST /api/upload (accepts file, extracts text, saves to DB, returns {id,extractedText}), GET /api/resume/:id (returns full resume data), PUT /api/resume/:id (updates resume data), POST /api/export/:format/:id (generates and returns file blob), DELETE /api/resume/:id
+
+STATE-MANAGEMENT: Zustand store{currentResume,setResume,updateSection,isDirty,save,reset}. Auto-save on blur or manual save button.
+
+WORKFLOW: (1)User uploads PDF/DOCX → (2)Display extracted text in reference panel → (3)User fills structured forms section-by-section → (4)Live preview updates as they type → (5)Select template and customize theme → (6)Export in desired format
+
+PHASES: (1)Backend setup+upload+text-extraction+SQLite (2)Frontend upload+display-extracted-text (3)Build all editor forms+validation (4)State management+auto-save (5)Create 3 templates (6)Template selector+theme customizer (7)PDF/DOCX/HTML export (8)Polish+responsive+testing
+
+REPLIT-CONFIG: SQLite database file, serve frontend from Express static middleware, single web service on port 3000, proxy API calls from frontend, handle CORS, file upload to ./uploads directory
+
+UI-LAYOUT: Split screen-Left(forms with tabs for each section), Right(live template preview). Mobile-stacked tabs. Include progress indicator showing completion percentage.
+
+VALIDATION: Required fields-personalInfo.fullName+email, at least 1 experience OR education entry. Show validation errors inline. Prevent export if invalid.
+
+FEATURES: Section completion indicators, character counters for descriptions, drag-to-reorder experience/education entries, duplicate section button, ATS-friendliness checker(basic-checks for contact info, bullet points, standard headers, no tables/images), download history
+
+EXECUTION: Implement phases sequentially, create one complete feature before next, commit after each working feature with descriptive messages, TypeScript strict mode, error boundaries, loading states, responsive design, document in README with setup instructions. Start Phase 1: Initialize Repl.it project, setup Express server, Prisma with SQLite, file upload endpoint, text extraction service.
+```

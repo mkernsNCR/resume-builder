@@ -1,0 +1,484 @@
+import { useState, useRef, useCallback } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { FileUpload } from "@/components/file-upload";
+import { ExtractedTextDisplay } from "@/components/extracted-text-display";
+import { ResumeEditor } from "@/components/resume-editor";
+import { TemplateSelector } from "@/components/template-selector";
+import { ResumePreview } from "@/components/resume-templates";
+import type { Resume, ResumeContent, ResumeTemplate } from "@shared/schema";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import {
+  FileText,
+  Download,
+  Save,
+  Loader2,
+  Plus,
+  Eye,
+  Edit3,
+  Palette,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+
+const defaultContent: ResumeContent = {
+  fullName: "",
+  title: "",
+  summary: "",
+  contact: {
+    email: "",
+    phone: "",
+    location: "",
+    linkedin: "",
+    website: "",
+  },
+  experience: [],
+  education: [],
+  skills: [],
+  projects: [],
+};
+
+export default function Home() {
+  const { toast } = useToast();
+  const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
+  const [content, setContent] = useState<ResumeContent>(defaultContent);
+  const [template, setTemplate] = useState<ResumeTemplate>("modern");
+  const [extractedText, setExtractedText] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [activeTab, setActiveTab] = useState("edit");
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // Fetch all resumes
+  const { data: resumes, isLoading: loadingResumes } = useQuery<Resume[]>({
+    queryKey: ["/api/resumes"],
+  });
+
+  // Save resume mutation
+  const saveMutation = useMutation({
+    mutationFn: async (data: { content: ResumeContent; template: string; title: string }) => {
+      if (currentResumeId) {
+        return apiRequest("PUT", `/api/resumes/${currentResumeId}`, {
+          title: data.title,
+          content: data.content,
+          template: data.template,
+        });
+      } else {
+        return apiRequest("POST", "/api/resumes", {
+          title: data.title,
+          content: data.content,
+          template: data.template,
+        });
+      }
+    },
+    onSuccess: async (response) => {
+      const result = await response.json();
+      if (!currentResumeId) {
+        setCurrentResumeId(result.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      toast({
+        title: "Resume saved",
+        description: "Your changes have been saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save resume. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Upload file mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) throw new Error("Upload failed");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setExtractedText(data.extractedText || "");
+      toast({
+        title: "Resume uploaded",
+        description: "Text has been extracted from your resume.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Upload failed",
+        description: "Could not extract text from the file. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileSelect = useCallback((file: File) => {
+    setIsUploading(true);
+    uploadMutation.mutate(file, {
+      onSettled: () => setIsUploading(false),
+    });
+  }, []);
+
+  const handleContentChange = useCallback((updates: Partial<ResumeContent>) => {
+    setContent((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleSave = () => {
+    const title = content.fullName 
+      ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
+      : "Untitled Resume";
+    saveMutation.mutate({ content, template, title });
+  };
+
+  // Client-side PDF export using html2canvas + jsPDF
+  const handleExportPDF = async () => {
+    if (!printRef.current) {
+      toast({
+        title: "Export failed",
+        description: "Please make sure the preview is visible.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    
+    try {
+      // Create a temporary container for full-size rendering
+      const tempContainer = document.createElement("div");
+      tempContainer.style.position = "absolute";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "0";
+      tempContainer.style.width = "816px";
+      tempContainer.style.backgroundColor = "white";
+      document.body.appendChild(tempContainer);
+
+      // Clone the resume content
+      const resumeContent = printRef.current.querySelector(".resume-preview");
+      if (!resumeContent) {
+        throw new Error("Resume preview not found");
+      }
+      
+      const clone = resumeContent.cloneNode(true) as HTMLElement;
+      clone.style.transform = "none";
+      clone.style.width = "816px";
+      tempContainer.appendChild(clone);
+
+      // Generate canvas
+      const canvas = await html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        width: 816,
+        windowWidth: 816,
+      });
+
+      // Create PDF (US Letter size: 8.5 x 11 inches = 612 x 792 points)
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "letter",
+      });
+
+      const imgWidth = 612;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageHeight = 792;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      const imgData = canvas.toDataURL("image/png");
+      
+      // First page
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      // Additional pages if needed
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Download
+      const fileName = `${content.fullName || "resume"}.pdf`;
+      pdf.save(fileName);
+
+      // Cleanup
+      document.body.removeChild(tempContainer);
+
+      toast({
+        title: "Export complete",
+        description: "Your resume has been downloaded as PDF.",
+      });
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast({
+        title: "Export failed",
+        description: "Could not generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const loadResume = (resume: Resume) => {
+    setCurrentResumeId(resume.id);
+    setContent(resume.content as ResumeContent);
+    setTemplate(resume.template as ResumeTemplate);
+  };
+
+  const createNewResume = () => {
+    setCurrentResumeId(null);
+    setContent(defaultContent);
+    setTemplate("modern");
+    setExtractedText("");
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="border-b bg-card sticky top-0 z-50">
+        <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <FileText className="w-6 h-6 text-primary" />
+            <h1 className="text-lg font-semibold">Resume Builder</h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+              data-testid="button-save"
+            >
+              {saveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-1.5" />
+              )}
+              Save
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={isExporting || !content.fullName}
+              data-testid="button-export"
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-1.5" />
+              )}
+              Export PDF
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar - Resume List */}
+        <aside className="w-64 border-r bg-sidebar hidden lg:flex flex-col">
+          <div className="p-4 border-b">
+            <Button
+              className="w-full"
+              onClick={createNewResume}
+              data-testid="button-new-resume"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Resume
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-2">
+              {loadingResumes ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                </div>
+              ) : resumes && resumes.length > 0 ? (
+                resumes.map((resume) => (
+                  <Card
+                    key={resume.id}
+                    className={`p-3 cursor-pointer hover-elevate transition-all ${
+                      currentResumeId === resume.id
+                        ? "ring-2 ring-primary"
+                        : ""
+                    }`}
+                    onClick={() => loadResume(resume)}
+                    data-testid={`resume-card-${resume.id}`}
+                  >
+                    <h3 className="font-medium text-sm truncate">
+                      {resume.title || "Untitled Resume"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(resume.updatedAt).toLocaleDateString()}
+                    </p>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No resumes yet
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          {/* Editor Panel */}
+          <div
+            className={`${
+              showPreview ? "lg:w-1/2" : "w-full"
+            } flex flex-col border-r overflow-hidden`}
+          >
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="flex-1 flex flex-col"
+            >
+              <div className="border-b px-4 py-2 flex items-center justify-between gap-2">
+                <TabsList className="h-9">
+                  <TabsTrigger
+                    value="upload"
+                    className="text-xs"
+                    data-testid="main-tab-upload"
+                  >
+                    Upload
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="edit"
+                    className="text-xs"
+                    data-testid="main-tab-edit"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 mr-1" />
+                    Edit
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="template"
+                    className="text-xs"
+                    data-testid="main-tab-template"
+                  >
+                    <Palette className="w-3.5 h-3.5 mr-1" />
+                    Template
+                  </TabsTrigger>
+                </TabsList>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="hidden lg:flex"
+                  data-testid="button-toggle-preview"
+                >
+                  {showPreview ? (
+                    <>
+                      <ChevronRight className="w-4 h-4 mr-1" />
+                      Hide Preview
+                    </>
+                  ) : (
+                    <>
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      Show Preview
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  <TabsContent value="upload" className="m-0">
+                    <div className="space-y-4">
+                      <div>
+                        <h2 className="text-lg font-semibold mb-2">
+                          Upload Your Resume
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Upload an existing resume to extract text and help you
+                          fill out the form.
+                        </p>
+                      </div>
+                      <FileUpload
+                        onFileSelect={handleFileSelect}
+                        onExtractedText={setExtractedText}
+                        isLoading={isUploading}
+                      />
+                      {extractedText && (
+                        <ExtractedTextDisplay text={extractedText} />
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="edit" className="m-0">
+                    {extractedText && (
+                      <ExtractedTextDisplay text={extractedText} />
+                    )}
+                    <ResumeEditor
+                      key={currentResumeId || "new"}
+                      content={content}
+                      onChange={handleContentChange}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="template" className="m-0">
+                    <div className="space-y-4">
+                      <div>
+                        <h2 className="text-lg font-semibold mb-2">
+                          Choose a Template
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Select a professional template that best represents
+                          your style.
+                        </p>
+                      </div>
+                      <TemplateSelector
+                        selectedTemplate={template}
+                        onSelectTemplate={setTemplate}
+                        previewContent={content}
+                      />
+                    </div>
+                  </TabsContent>
+                </div>
+              </ScrollArea>
+            </Tabs>
+          </div>
+
+          {/* Preview Panel */}
+          {showPreview && (
+            <div className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30 overflow-hidden">
+              <div className="border-b px-4 py-2 bg-card flex items-center gap-2">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Live Preview</span>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-6 flex justify-center" ref={printRef}>
+                  <div className="shadow-xl transform scale-[0.65] origin-top">
+                    <ResumePreview content={content} template={template} />
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
