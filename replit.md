@@ -4,6 +4,10 @@
 
 A full-stack Resume Builder web application that allows users to upload resumes (PDF/DOCX), extract text content, manually structure resume data through forms, apply professional templates, and export polished resumes as PDF. The application features a split-screen interface with form editing on the left and live template preview on the right.
 
+### Mobile Experience
+- Preview tab (visible only on mobile via lg:hidden) provides live resume preview
+- Real-time preview updates using useWatch with 150ms debounce for smooth form-to-preview sync
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -23,7 +27,7 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Node.js with Express
 - **Language**: TypeScript with ESM modules
 - **File Uploads**: Multer middleware handling PDF and DOCX files (stored in ./uploads directory)
-- **Text Extraction**: pdf-parse for PDFs, mammoth for DOCX documents
+- **Text Extraction**: pdfjs-dist for PDFs (server-side with disabled workers), mammoth for DOCX documents
 - **API Pattern**: RESTful endpoints under /api prefix
 
 ### Database Layer
@@ -69,7 +73,7 @@ Four professional resume templates implemented as React components:
 - **Session Storage**: connect-pg-simple for Express sessions
 
 ### File Processing
-- **pdf-parse**: PDF text extraction
+- **pdfjs-dist**: PDF text extraction (server-side with GlobalWorkerOptions.workerSrc = "")
 - **mammoth**: DOCX to text conversion
 - **multer**: Multipart form handling for file uploads
 
