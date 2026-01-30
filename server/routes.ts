@@ -48,9 +48,10 @@ const updateResumeSchema = z.object({
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
-    const pdfParse = await import("pdf-parse");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse");
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse.default(dataBuffer);
+    const data = await pdfParse(dataBuffer);
     return data.text || "";
   } catch (error) {
     console.error("PDF extraction error:", error);
