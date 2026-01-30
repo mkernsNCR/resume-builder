@@ -8,15 +8,15 @@ interface CreativeTemplateProps {
 export function CreativeTemplate({ content }: CreativeTemplateProps) {
   return (
     <div className="resume-preview bg-white w-[816px] h-[1056px] overflow-hidden flex" style={{ aspectRatio: '8.5 / 11' }}>
-      {/* Left Sidebar */}
+      {/* Left Sidebar - 508 Compliant with WCAG 2.1 AA contrast ratios */}
       <aside className="w-[240px] bg-slate-800 text-white p-6 flex-shrink-0">
         {/* Name and Title */}
         <div className="mb-8">
-          <h1 className="text-xl font-bold leading-tight">
+          <h1 className="text-xl font-bold leading-tight text-white">
             {content.fullName || "Your Name"}
           </h1>
           {content.title && (
-            <p className="text-emerald-400 text-sm mt-2 font-medium">
+            <p className="text-emerald-300 text-sm mt-2 font-medium">
               {content.title}
             </p>
           )}
@@ -25,42 +25,42 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
         {/* Contact */}
         {content.contact && (
           <div className="mb-8">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-300 mb-3">
               Contact
             </h2>
             <div className="space-y-2 text-sm">
               {content.contact.email && (
                 <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-300 text-xs break-all">
+                  <Mail className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+                  <span className="text-white text-xs break-all">
                     {content.contact.email}
                   </span>
                 </div>
               )}
               {content.contact.phone && (
                 <div className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-300 text-xs">{content.contact.phone}</span>
+                  <Phone className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+                  <span className="text-white text-xs">{content.contact.phone}</span>
                 </div>
               )}
               {content.contact.location && (
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-300 text-xs">{content.contact.location}</span>
+                  <MapPin className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+                  <span className="text-white text-xs">{content.contact.location}</span>
                 </div>
               )}
               {content.contact.linkedin && (
                 <div className="flex items-center gap-2">
-                  <Linkedin className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-300 text-xs break-all">
+                  <Linkedin className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+                  <span className="text-white text-xs break-all">
                     {content.contact.linkedin}
                   </span>
                 </div>
               )}
               {content.contact.website && (
                 <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-300 text-xs break-all">
+                  <Globe className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+                  <span className="text-white text-xs break-all">
                     {content.contact.website}
                   </span>
                 </div>
@@ -72,15 +72,15 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
         {/* Skills */}
         {content.skills && content.skills.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-300 mb-3">
               Skills
             </h2>
             <div className="space-y-2">
               {content.skills.map((skill) => (
                 <div key={skill.id}>
-                  <span className="text-slate-300 text-xs">{skill.name}</span>
+                  <span className="text-white text-xs">{skill.name}</span>
                   {skill.level && (
-                    <div className="mt-1 h-1 bg-slate-600 rounded-full overflow-hidden">
+                    <div className="mt-1 h-1.5 bg-slate-600 rounded-full overflow-hidden" role="progressbar" aria-label={`${skill.name} skill level`}>
                       <div
                         className="h-full bg-emerald-400 rounded-full"
                         style={{
@@ -105,17 +105,17 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
         {/* Education */}
         {content.education && content.education.length > 0 && (
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-300 mb-3">
               Education
             </h2>
             <div className="space-y-3">
               {content.education.map((edu) => (
                 <div key={edu.id}>
-                  <h3 className="text-slate-100 text-xs font-semibold">
+                  <h3 className="text-white text-xs font-semibold">
                     {edu.degree}
                   </h3>
-                  <p className="text-slate-400 text-xs">{edu.institution}</p>
-                  <p className="text-slate-500 text-xs mt-1">
+                  <p className="text-slate-200 text-xs">{edu.institution}</p>
+                  <p className="text-slate-300 text-xs mt-1">
                     {edu.startDate} - {edu.endDate || "Present"}
                   </p>
                 </div>
@@ -125,16 +125,16 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
         )}
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content - 508 Compliant */}
       <main className="flex-1 p-6 bg-white">
         {/* Summary */}
         {content.summary && (
           <section className="mb-6">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-2">
-              <span className="w-8 h-0.5 bg-emerald-500"></span>
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-2 flex items-center gap-2">
+              <span className="w-8 h-0.5 bg-emerald-600" aria-hidden="true"></span>
               About Me
             </h2>
-            <p className="text-gray-600 leading-relaxed text-sm">
+            <p className="text-gray-700 leading-relaxed text-sm">
               {content.summary}
             </p>
           </section>
@@ -143,29 +143,29 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
         {/* Experience */}
         {content.experience && content.experience.length > 0 && (
           <section className="mb-6">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 flex items-center gap-2">
-              <span className="w-8 h-0.5 bg-emerald-500"></span>
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+              <span className="w-8 h-0.5 bg-emerald-600" aria-hidden="true"></span>
               Experience
             </h2>
             <div className="space-y-4">
               {content.experience.map((exp) => (
-                <div key={exp.id} className="relative pl-4 border-l-2 border-emerald-200">
-                  <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-emerald-500" />
+                <div key={exp.id} className="relative pl-4 border-l-2 border-emerald-300">
+                  <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-emerald-600" aria-hidden="true" />
                   <div className="flex justify-between items-start mb-1">
                     <div>
-                      <h3 className="font-semibold text-slate-800 text-sm">
+                      <h3 className="font-semibold text-slate-900 text-sm">
                         {exp.position}
                       </h3>
-                      <p className="text-emerald-600 text-sm font-medium">
+                      <p className="text-emerald-700 text-sm font-medium">
                         {exp.company}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                    <span className="text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
                       {exp.startDate} - {exp.current ? "Present" : exp.endDate}
                     </span>
                   </div>
                   {exp.description && (
-                    <p className="text-gray-600 mt-2 text-xs leading-relaxed">
+                    <p className="text-gray-700 mt-2 text-xs leading-relaxed">
                       {exp.description}
                     </p>
                   )}
@@ -174,9 +174,9 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
                       {exp.highlights.map((highlight, idx) => (
                         <li
                           key={idx}
-                          className="text-gray-600 text-xs flex items-start gap-2"
+                          className="text-gray-700 text-xs flex items-start gap-2"
                         >
-                          <span className="text-emerald-500 mt-0.5">•</span>
+                          <span className="text-emerald-600 mt-0.5" aria-hidden="true">•</span>
                           {highlight}
                         </li>
                       ))}
@@ -191,8 +191,8 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
         {/* Projects */}
         {content.projects && content.projects.length > 0 && (
           <section>
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 flex items-center gap-2">
-              <span className="w-8 h-0.5 bg-emerald-500"></span>
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+              <span className="w-8 h-0.5 bg-emerald-600" aria-hidden="true"></span>
               Projects
             </h2>
             <div className="grid grid-cols-2 gap-3">
@@ -201,16 +201,16 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
                   key={project.id}
                   className="p-3 bg-slate-50 rounded border border-slate-200"
                 >
-                  <h3 className="font-semibold text-slate-800 text-sm">
+                  <h3 className="font-semibold text-slate-900 text-sm">
                     {project.name}
                   </h3>
                   {project.description && (
-                    <p className="text-gray-600 mt-1 text-xs leading-relaxed">
+                    <p className="text-gray-700 mt-1 text-xs leading-relaxed">
                       {project.description}
                     </p>
                   )}
                   {project.url && (
-                    <p className="text-emerald-600 text-xs mt-2">{project.url}</p>
+                    <p className="text-emerald-700 text-xs mt-2 font-medium">{project.url}</p>
                   )}
                 </div>
               ))}
