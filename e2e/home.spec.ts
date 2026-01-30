@@ -17,11 +17,6 @@ test.describe("Home Page", () => {
   test("should display seeded sample resumes in sidebar", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resumes to load
-    await page.waitForResponse((response) =>
-      response.url().includes("/api/resumes") && response.status() === 200
-    );
-
     // Check that sample resumes are displayed (at least one resume card exists)
     const resumeCards = page.locator("aside .cursor-pointer");
     await expect(resumeCards.first()).toBeVisible({ timeout: 10000 });

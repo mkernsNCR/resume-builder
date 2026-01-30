@@ -28,13 +28,9 @@ test.describe("Resume CRUD Operations", () => {
   test("should load an existing resume from sidebar", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resumes to load
-    await page.waitForResponse((response) =>
-      response.url().includes("/api/resumes") && response.status() === 200
-    );
-
-    // Click on the first resume in the sidebar
+    // Wait for resume cards to appear in sidebar
     const resumeCard = page.locator("aside .cursor-pointer").first();
+    await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 
     // Switch to Edit tab and verify data loaded
@@ -49,13 +45,9 @@ test.describe("Resume CRUD Operations", () => {
   test("should update an existing resume", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resumes to load
-    await page.waitForResponse((response) =>
-      response.url().includes("/api/resumes") && response.status() === 200
-    );
-
-    // Click on the first resume in the sidebar
+    // Wait for resume cards to appear in sidebar
     const resumeCard = page.locator("aside .cursor-pointer").first();
+    await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 
     // Switch to Edit tab

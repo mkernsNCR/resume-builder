@@ -15,13 +15,9 @@ test.describe("PDF Export", () => {
   test("should enable export button when resume has content", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resumes to load
-    await page.waitForResponse((response) =>
-      response.url().includes("/api/resumes") && response.status() === 200
-    );
-
-    // Click on the first resume in the sidebar
+    // Wait for resume cards to appear in sidebar
     const resumeCard = page.locator("aside .cursor-pointer").first();
+    await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 
     // Export button should be enabled
@@ -32,13 +28,9 @@ test.describe("PDF Export", () => {
   test("should trigger PDF download on export click", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resumes to load
-    await page.waitForResponse((response) =>
-      response.url().includes("/api/resumes") && response.status() === 200
-    );
-
-    // Click on the first resume in the sidebar
+    // Wait for resume cards to appear in sidebar
     const resumeCard = page.locator("aside .cursor-pointer").first();
+    await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 
     // Set up download listener
