@@ -1,11 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { createRequire } from "module";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { z } from "zod";
 import { storage, seedDatabase } from "./storage";
 import { insertResumeSchema, resumeContentSchema, type ResumeContent } from "@shared/schema";
+
+const require = createRequire(import.meta.url);
 
 // Configure multer for file uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
