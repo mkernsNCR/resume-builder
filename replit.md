@@ -8,6 +8,12 @@ A full-stack Resume Builder web application that allows users to upload resumes 
 - Preview tab (visible only on mobile via lg:hidden) provides live resume preview
 - Real-time preview updates using useWatch with 150ms debounce for smooth form-to-preview sync
 
+### Document Dimensions
+- Templates use US Letter size: 816px × 1056px (8.5" × 11" at 96dpi)
+- Aspect ratio: 8.5 / 11 (1:1.294)
+- Desktop preview scaled to 65%, mobile to 45%
+- All templates have white background with overflow-hidden for paper-like appearance
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

@@ -517,8 +517,17 @@ export default function Home() {
                           See how your resume looks in real-time
                         </p>
                       </div>
-                      <div className="w-full overflow-auto pb-4">
-                        <div className="transform scale-[0.5] origin-top mx-auto" style={{ width: "fit-content" }}>
+                      <div className="w-full overflow-auto pb-4 flex justify-center">
+                        <div 
+                          className="origin-top" 
+                          style={{ 
+                            transform: 'scale(0.45)',
+                            width: '816px',
+                            height: '1056px',
+                            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                            border: '1px solid #e5e7eb',
+                          }}
+                        >
                           <ResumePreview content={content} template={template} />
                         </div>
                       </div>
@@ -538,7 +547,16 @@ export default function Home() {
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-6 flex justify-center" ref={printRef}>
-                  <div className="shadow-xl transform scale-[0.65] origin-top">
+                  <div 
+                    className="origin-top"
+                    style={{ 
+                      transform: 'scale(0.65)',
+                      width: '816px',
+                      height: '1056px',
+                      boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                      border: '1px solid #e5e7eb',
+                    }}
+                  >
                     <ResumePreview content={content} template={template} />
                   </div>
                 </div>

@@ -6,7 +6,7 @@ interface ClassicTemplateProps {
 
 export function ClassicTemplate({ content }: ClassicTemplateProps) {
   return (
-    <div className="resume-preview p-8 min-h-[1056px] w-full max-w-[816px] mx-auto font-serif">
+    <div className="resume-preview bg-white p-8 w-[816px] h-[1056px] overflow-hidden font-serif" style={{ aspectRatio: '8.5 / 11' }}>
       {/* Header - Centered */}
       <header className="text-center mb-8 border-b-2 border-gray-800 pb-4">
         <h1 className="text-3xl font-bold text-gray-900 uppercase tracking-wide mb-2">

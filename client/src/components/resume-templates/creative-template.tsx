@@ -7,7 +7,7 @@ interface CreativeTemplateProps {
 
 export function CreativeTemplate({ content }: CreativeTemplateProps) {
   return (
-    <div className="resume-preview min-h-[1056px] w-full max-w-[816px] mx-auto flex">
+    <div className="resume-preview bg-white w-[816px] h-[1056px] overflow-hidden flex" style={{ aspectRatio: '8.5 / 11' }}>
       {/* Left Sidebar */}
       <aside className="w-[240px] bg-slate-800 text-white p-6 flex-shrink-0">
         {/* Name and Title */}

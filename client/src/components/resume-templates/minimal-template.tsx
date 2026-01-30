@@ -6,7 +6,7 @@ interface MinimalTemplateProps {
 
 export function MinimalTemplate({ content }: MinimalTemplateProps) {
   return (
-    <div className="resume-preview p-8 min-h-[1056px] w-full max-w-[816px] mx-auto">
+    <div className="resume-preview bg-white p-8 w-[816px] h-[1056px] overflow-hidden" style={{ aspectRatio: '8.5 / 11' }}>
       {/* Header - Clean and Simple */}
       <header className="mb-8">
         <h1 className="text-2xl font-light text-gray-900 tracking-wide">

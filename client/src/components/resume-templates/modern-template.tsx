@@ -7,7 +7,7 @@ interface ModernTemplateProps {
 
 export function ModernTemplate({ content }: ModernTemplateProps) {
   return (
-    <div className="resume-preview p-8 min-h-[1056px] w-full max-w-[816px] mx-auto">
+    <div className="resume-preview bg-white p-8 w-[816px] h-[1056px] overflow-hidden" style={{ aspectRatio: '8.5 / 11' }}>
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-1">
