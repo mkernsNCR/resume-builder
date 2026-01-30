@@ -12,7 +12,7 @@ export function CreativeTemplate({ content }: CreativeTemplateProps) {
       <aside className="w-[240px] bg-slate-800 text-white p-6 flex-shrink-0">
         {/* Name and Title */}
         <div className="mb-8">
-          <h1 className="text-xl font-bold leading-tight text-white">
+          <h1 className="text-xl font-bold leading-tight" style={{ color: '#ffffff' }}>
             {content.fullName || "Your Name"}
           </h1>
           {content.title && (
