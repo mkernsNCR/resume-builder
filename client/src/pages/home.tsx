@@ -53,7 +53,7 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
-  const [activeTab, setActiveTab] = useState("edit");
+  const [activeTab, setActiveTab] = useState("upload");
   const printRef = useRef<HTMLDivElement>(null);
 
   // Fetch all resumes
@@ -112,9 +112,35 @@ export default function Home() {
     },
     onSuccess: (data) => {
       setExtractedText(data.extractedText || "");
+      
+      // If we have parsed content, pre-fill the form
+      if (data.parsedContent) {
+        const parsed = data.parsedContent;
+        setContent(prev => ({
+          ...prev,
+          fullName: parsed.fullName || prev.fullName,
+          title: parsed.title || prev.title,
+          summary: parsed.summary || prev.summary,
+          contact: {
+            email: parsed.contact?.email || prev.contact?.email || "",
+            phone: parsed.contact?.phone || prev.contact?.phone || "",
+            location: parsed.contact?.location || prev.contact?.location || "",
+            linkedin: parsed.contact?.linkedin || prev.contact?.linkedin || "",
+            website: parsed.contact?.website || prev.contact?.website || "",
+          },
+          skills: parsed.skills?.length > 0 ? parsed.skills : prev.skills,
+        }));
+        
+        // Create a new resume with the parsed content
+        setCurrentResumeId(null);
+      }
+      
+      // Auto-switch to Edit tab so user can review and edit
+      setActiveTab("edit");
+      
       toast({
-        title: "Resume uploaded",
-        description: "Text has been extracted from your resume.",
+        title: "Resume uploaded successfully",
+        description: "We've extracted your information. Please review and edit as needed.",
       });
     },
     onError: () => {
@@ -406,14 +432,13 @@ export default function Home() {
               <ScrollArea className="flex-1">
                 <div className="p-4">
                   <TabsContent value="upload" className="m-0">
-                    <div className="space-y-4">
-                      <div>
-                        <h2 className="text-lg font-semibold mb-2">
-                          Upload Your Resume
+                    <div className="space-y-6">
+                      <div className="text-center py-4">
+                        <h2 className="text-xl font-semibold mb-2">
+                          Get Started with Your Resume
                         </h2>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Upload an existing resume to extract text and help you
-                          fill out the form.
+                        <p className="text-muted-foreground">
+                          Upload your existing resume to automatically extract your information
                         </p>
                       </div>
                       <FileUpload
@@ -424,6 +449,23 @@ export default function Home() {
                       {extractedText && (
                         <ExtractedTextDisplay text={extractedText} />
                       )}
+                      <div className="text-center pt-2">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Or prefer to start fresh?
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setContent(defaultContent);
+                            setCurrentResumeId(null);
+                            setActiveTab("edit");
+                          }}
+                          data-testid="button-skip-upload"
+                        >
+                          Create Resume Manually
+                        </Button>
+                      </div>
                     </div>
                   </TabsContent>
 

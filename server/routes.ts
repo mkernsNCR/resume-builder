@@ -51,7 +51,6 @@ const updateResumeSchema = z.object({
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require("pdf-parse");
     const dataBuffer = fs.readFileSync(filePath);
     const data = await pdfParse(dataBuffer);
@@ -71,6 +70,114 @@ async function extractTextFromDOCX(filePath: string): Promise<string> {
     console.error("DOCX extraction error:", error);
     return "";
   }
+}
+
+// Parse extracted text to get structured resume data
+function parseResumeText(text: string): Partial<ResumeContent> {
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+  
+  const result: Partial<ResumeContent> = {
+    fullName: "",
+    title: "",
+    summary: "",
+    contact: {
+      email: "",
+      phone: "",
+      location: "",
+      linkedin: "",
+      website: "",
+    },
+    experience: [],
+    education: [],
+    skills: [],
+    projects: [],
+  };
+
+  // Extract email
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  const emails = text.match(emailRegex);
+  if (emails && emails.length > 0) {
+    result.contact!.email = emails[0];
+  }
+
+  // Extract phone number
+  const phoneRegex = /(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g;
+  const phones = text.match(phoneRegex);
+  if (phones && phones.length > 0) {
+    result.contact!.phone = phones[0];
+  }
+
+  // Extract LinkedIn
+  const linkedinRegex = /(?:linkedin\.com\/in\/|linkedin:?\s*)([a-zA-Z0-9-]+)/i;
+  const linkedinMatch = text.match(linkedinRegex);
+  if (linkedinMatch) {
+    result.contact!.linkedin = `linkedin.com/in/${linkedinMatch[1]}`;
+  }
+
+  // Extract website
+  const websiteRegex = /(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
+  const websites = text.match(websiteRegex);
+  if (websites) {
+    const personalSite = websites.find(w => !w.includes('linkedin') && !w.includes('github.com'));
+    if (personalSite) {
+      result.contact!.website = personalSite.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    }
+  }
+
+  // Try to extract name (usually first non-empty line that looks like a name)
+  for (const line of lines.slice(0, 5)) {
+    // Skip lines that look like contact info
+    if (line.includes('@') || line.match(/\d{3}/) || line.includes('linkedin')) continue;
+    // Check if it looks like a name (2-4 words, capitalized)
+    const words = line.split(/\s+/);
+    if (words.length >= 2 && words.length <= 4 && words.every(w => /^[A-Z]/.test(w))) {
+      result.fullName = line;
+      break;
+    }
+  }
+
+  // Try to extract job title (usually near the name)
+  const titleKeywords = ['engineer', 'developer', 'designer', 'manager', 'analyst', 'scientist', 'director', 'lead', 'senior', 'junior', 'specialist', 'consultant'];
+  for (const line of lines.slice(0, 10)) {
+    const lower = line.toLowerCase();
+    if (titleKeywords.some(kw => lower.includes(kw)) && line.length < 80) {
+      result.title = line;
+      break;
+    }
+  }
+
+  // Extract skills - look for common skill patterns
+  const skillKeywords = ['skills', 'technologies', 'technical skills', 'expertise'];
+  let inSkillsSection = false;
+  const foundSkills: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lower = line.toLowerCase();
+    
+    if (skillKeywords.some(kw => lower.includes(kw))) {
+      inSkillsSection = true;
+      continue;
+    }
+    
+    if (inSkillsSection) {
+      // Stop at next section header
+      if (/^(experience|education|projects|work|employment)/i.test(lower)) {
+        break;
+      }
+      // Parse comma or pipe separated skills
+      const skills = line.split(/[,|•·]/g).map(s => s.trim()).filter(s => s && s.length < 30);
+      foundSkills.push(...skills);
+    }
+  }
+  
+  result.skills = foundSkills.slice(0, 15).map((name, idx) => ({
+    id: `skill-${idx + 1}`,
+    name,
+    level: 'intermediate' as const,
+  }));
+
+  return result;
 }
 
 export async function registerRoutes(
@@ -194,9 +301,13 @@ export async function registerRoutes(
         if (err) console.error("Error deleting uploaded file:", err);
       });
 
+      // Parse the extracted text to get structured data
+      const parsedContent = parseResumeText(extractedText);
+
       res.json({
         filename: req.file.originalname,
         extractedText: extractedText.trim(),
+        parsedContent,
       });
     } catch (error) {
       console.error("Upload error:", error);
