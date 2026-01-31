@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, type MouseEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   Palette,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 
 const defaultContent: ResumeContent = {
@@ -54,6 +55,7 @@ export default function Home() {
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("upload");
+  const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Fetch all resumes
@@ -129,6 +131,9 @@ export default function Home() {
             website: parsed.contact?.website || prev.contact?.website || "",
           },
           skills: parsed.skills?.length > 0 ? parsed.skills : prev.skills,
+          experience: parsed.experience?.length > 0 ? parsed.experience : prev.experience,
+          education: parsed.education?.length > 0 ? parsed.education : prev.education,
+          projects: parsed.projects?.length > 0 ? parsed.projects : prev.projects,
         }));
         
         // Create a new resume with the parsed content
@@ -151,6 +156,44 @@ export default function Home() {
       });
     },
   });
+
+  // Delete resume mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/resumes/${id}`);
+    },
+    onSuccess: (_data, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      // If we deleted the current resume, reset to new
+      if (deletedId === currentResumeId) {
+        setCurrentResumeId(null);
+        setContent(defaultContent);
+        setExtractedText("");
+      }
+      setDeletingResumeId(null);
+      toast({
+        title: "Resume deleted",
+        description: "The resume has been removed.",
+      });
+    },
+    onError: (_error, _deletedId) => {
+      setDeletingResumeId(null);
+      toast({
+        title: "Error",
+        description: "Failed to delete resume. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteResume = (
+    e: MouseEvent<HTMLButtonElement>,
+    resumeId: string
+  ) => {
+    e.stopPropagation(); // Prevent card click
+    setDeletingResumeId(resumeId);
+    deleteMutation.mutate(resumeId);
+  };
 
   const handleFileSelect = useCallback((file: File) => {
     setIsUploading(true);
@@ -279,7 +322,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
@@ -322,50 +365,88 @@ export default function Home() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Resume List */}
-        <aside className="w-64 border-r bg-sidebar hidden lg:flex flex-col">
-          <div className="p-4 border-b">
+        <aside className="w-80 border-r bg-sidebar/50 hidden lg:flex flex-col overflow-hidden">
+          <div className="p-4 border-b bg-sidebar/95 backdrop-blur z-10 sticky top-0">
             <Button
-              className="w-full"
+              className="w-full shadow-sm"
               onClick={createNewResume}
               data-testid="button-new-resume"
             >
-              <Plus className="w-4 h-4 mr-1.5" />
+              <Plus className="w-4 h-4 mr-2" />
               New Resume
             </Button>
           </div>
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-2">
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-6 py-4 space-y-3">
               {loadingResumes ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                <div className="text-center py-8 text-muted-foreground">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Loading resumes...</p>
                 </div>
               ) : resumes && resumes.length > 0 ? (
                 resumes.map((resume) => (
-                  <Card
+                  <button
                     key={resume.id}
-                    className={`p-3 cursor-pointer hover-elevate transition-all ${
+                    type="button"
+                    className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
                       currentResumeId === resume.id
-                        ? "ring-2 ring-primary"
-                        : ""
+                        ? "bg-background border-primary/50 shadow-sm ring-1 ring-primary/20"
+                        : "bg-card border-transparent hover:border-border/50 hover:bg-card/80"
                     }`}
                     onClick={() => loadResume(resume)}
                     data-testid={`resume-card-${resume.id}`}
                   >
-                    <h3 className="font-medium text-sm truncate">
-                      {resume.title || "Untitled Resume"}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(resume.updatedAt).toLocaleDateString()}
-                    </p>
-                  </Card>
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                      currentResumeId === resume.id
+                        ? "bg-primary/10 border-primary/20 text-primary"
+                        : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
+                    }`}>
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
+                        currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                      }`}>
+                        {resume.title || "Untitled Resume"}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground/80 truncate">
+                        Edited {new Date(resume.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 -mr-1 transition-all"
+                      onClick={(e) => handleDeleteResume(e, resume.id)}
+                      disabled={deletingResumeId === resume.id}
+                      data-testid={`button-delete-resume-${resume.id}`}
+                      aria-label={`Delete ${resume.title || "Untitled Resume"}`}
+                    >
+                      {deletingResumeId === resume.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </button>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No resumes yet
-                </p>
+                <div className="text-center py-12 px-4 border-2 border-dashed rounded-xl border-muted-foreground/20">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                    <FileText className="w-6 h-6 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    No resumes yet
+                  </p>
+                  <p className="text-xs text-muted-foreground/60">
+                    Create your first resume to get started
+                  </p>
+                </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </aside>
 
         {/* Main Content Area */}
@@ -548,24 +629,33 @@ export default function Home() {
 
           {/* Preview Panel */}
           {showPreview && (
-            <div className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30 overflow-hidden">
+            <div className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30 overflow-hidden" data-testid="live-preview-panel">
               <div className="border-b px-4 py-2 bg-card flex items-center gap-2">
                 <Eye className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Live Preview</span>
               </div>
               <ScrollArea className="flex-1">
-                <div className="p-6 flex justify-center" ref={printRef}>
+                <div className="p-6 flex justify-center">
                   <div 
-                    className="origin-top"
+                    className="relative"
                     style={{ 
-                      transform: 'scale(0.65)',
-                      width: '816px',
-                      height: '1056px',
-                      boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-                      border: '1px solid #e5e7eb',
+                      width: `${816 * 0.65}px`,
+                      height: `${1056 * 0.65}px`,
                     }}
                   >
-                    <ResumePreview content={content} template={template} />
+                    <div 
+                      ref={printRef}
+                      className="absolute top-0 left-0 origin-top-left"
+                      style={{ 
+                        transform: 'scale(0.65)',
+                        width: '816px',
+                        height: '1056px',
+                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                        border: '1px solid #e5e7eb',
+                      }}
+                    >
+                      <ResumePreview content={content} template={template} />
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
