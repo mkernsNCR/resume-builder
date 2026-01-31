@@ -74,16 +74,24 @@ test.describe("API Endpoints", () => {
       },
     };
 
-    const response = await request.post("/api/resumes", {
-      data: newResume,
-    });
-    
-    expect(response.ok()).toBeTruthy();
-    expect(response.status()).toBe(201);
-    
-    const created = await response.json();
-    expect(created.id).toBeDefined();
-    expect(created.title).toBe("E2E Test Resume");
+    let created: { id?: string; title?: string } = {};
+    try {
+      const response = await request.post("/api/resumes", {
+        data: newResume,
+      });
+      
+      expect(response.ok()).toBeTruthy();
+      expect(response.status()).toBe(201);
+      
+      created = await response.json();
+      expect(created.id).toBeDefined();
+      expect(created.title).toBe("E2E Test Resume");
+    } finally {
+      // Clean up created resume
+      if (created?.id) {
+        await request.delete(`/api/resumes/${created.id}`);
+      }
+    }
   });
 
   test("PUT /api/resumes/:id should update resume", async ({ request }) => {

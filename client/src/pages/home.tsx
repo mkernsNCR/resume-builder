@@ -385,23 +385,15 @@ export default function Home() {
                 </div>
               ) : resumes && resumes.length > 0 ? (
                 resumes.map((resume) => (
-                  <div
+                  <button
                     key={resume.id}
-                    className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer ${
+                    type="button"
+                    className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
                       currentResumeId === resume.id
                         ? "bg-background border-primary/50 shadow-sm ring-1 ring-primary/20"
                         : "bg-card border-transparent hover:border-border/50 hover:bg-card/80"
                     }`}
                     onClick={() => loadResume(resume)}
-                    onKeyDown={(e) => {
-                      if (e.target !== e.currentTarget) return;
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        if (e.key === ' ') e.preventDefault();
-                        loadResume(resume);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
                     data-testid={`resume-card-${resume.id}`}
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
@@ -438,7 +430,7 @@ export default function Home() {
                         <Trash2 className="w-4 h-4" />
                       )}
                     </Button>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="text-center py-12 px-4 border-2 border-dashed rounded-xl border-muted-foreground/20">
@@ -637,7 +629,7 @@ export default function Home() {
 
           {/* Preview Panel */}
           {showPreview && (
-            <div className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30 overflow-hidden">
+            <div className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30 overflow-hidden" data-testid="live-preview-panel">
               <div className="border-b px-4 py-2 bg-card flex items-center gap-2">
                 <Eye className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Live Preview</span>

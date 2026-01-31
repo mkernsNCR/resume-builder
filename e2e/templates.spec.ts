@@ -23,8 +23,8 @@ test.describe("Resume Templates", () => {
   test("should switch between templates", async ({ page }) => {
     await page.getByTestId("main-tab-template").click();
 
-    // Wait for template options to be visible then click Classic
-    await page.getByText("Classic").first().click();
+    // Click Classic template using stable test-id selector
+    await page.getByTestId("template-option-classic").click();
 
     // Verify the template was selected (save should work)
     await page.getByTestId("button-save").click();
@@ -32,7 +32,7 @@ test.describe("Resume Templates", () => {
   });
 
   test("should show live preview panel", async ({ page }) => {
-    // Check that Live Preview heading is visible
-    await expect(page.getByText("Live Preview")).toBeVisible();
+    // Check that the live preview panel container is visible
+    await expect(page.getByTestId("live-preview-panel")).toBeVisible();
   });
 });
