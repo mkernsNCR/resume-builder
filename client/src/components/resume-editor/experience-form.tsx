@@ -71,7 +71,7 @@ function SortableExperienceItem({
       className="relative p-4 border rounded-lg bg-muted/30"
       data-testid={`experience-item-${index}`}
     >
-      <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+      <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing" aria-label="Drag to reorder item" {...attributes} {...listeners}>
         <GripVertical className="w-5 h-5 text-muted-foreground" />
       </div>
       <div className="absolute top-3 right-3">
@@ -220,11 +220,17 @@ export function ExperienceForm({ content, onChange }: ExperienceFormProps) {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = experiences.findIndex((exp) => exp.id === active.id);
-      const newIndex = experiences.findIndex((exp) => exp.id === over.id);
-      onChange({ experience: arrayMove(experiences, oldIndex, newIndex) });
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = experiences.findIndex((exp) => exp.id === active.id);
+    const newIndex = experiences.findIndex((exp) => exp.id === over.id);
+    
+    if (oldIndex < 0 || newIndex < 0) {
+      console.warn('Invalid drag indices:', { oldIndex, newIndex });
+      return;
     }
+    
+    onChange({ experience: arrayMove(experiences, oldIndex, newIndex) });
   };
 
   const addExperience = () => {

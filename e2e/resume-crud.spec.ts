@@ -28,8 +28,8 @@ test.describe("Resume CRUD Operations", () => {
   test("should load an existing resume from sidebar", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resume cards to appear in sidebar
-    const resumeCard = page.locator("aside .cursor-pointer").first();
+    // Wait for resume cards to appear in sidebar using stable test-id selector
+    const resumeCard = page.getByTestId(/^resume-card-/).first();
     await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 
@@ -45,8 +45,8 @@ test.describe("Resume CRUD Operations", () => {
   test("should update an existing resume", async ({ page }) => {
     await page.goto("/");
 
-    // Wait for resume cards to appear in sidebar
-    const resumeCard = page.locator("aside .cursor-pointer").first();
+    // Wait for resume cards to appear in sidebar using stable test-id selector
+    const resumeCard = page.getByTestId(/^resume-card-/).first();
     await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 

@@ -162,10 +162,10 @@ export default function Home() {
     mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/resumes/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       // If we deleted the current resume, reset to new
-      if (deletingResumeId === currentResumeId) {
+      if (deletedId === currentResumeId) {
         setCurrentResumeId(null);
         setContent(defaultContent);
         setExtractedText("");
@@ -176,7 +176,7 @@ export default function Home() {
         description: "The resume has been removed.",
       });
     },
-    onError: () => {
+    onError: (_error, _deletedId) => {
       setDeletingResumeId(null);
       toast({
         title: "Error",
@@ -393,6 +393,15 @@ export default function Home() {
                         : "bg-card border-transparent hover:border-border/50 hover:bg-card/80"
                     }`}
                     onClick={() => loadResume(resume)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        if (e.key === ' ') e.preventDefault();
+                        loadResume(resume);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                     data-testid={`resume-card-${resume.id}`}
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${

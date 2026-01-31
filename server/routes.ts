@@ -55,9 +55,8 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     // Use pdfjs-dist with proper Node.js configuration
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
     
-    // Set up fake worker to avoid worker errors in Node.js
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 
-      require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    // Disable worker for server-side usage
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
     
     const dataBuffer = fs.readFileSync(filePath);
     const uint8Array = new Uint8Array(dataBuffer);

@@ -60,7 +60,7 @@ function extractContact(text: string) {
     const lower = u.toLowerCase();
     return !lower.includes('linkedin') && !lower.includes('github') && 
            !emailDomains.some(d => lower.includes(d + '.')) &&
-           !techTerms.some(t => lower.includes(t.replace('.', '')));
+           !techTerms.some(t => lower.includes(t) || lower.includes(t.replace(/\./g, '')));
   });
   if (website) contact.website = website.replace(/^https?:\/\//, '').replace(/^www\./, '');
   
@@ -216,8 +216,8 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
   }
   
   for (let i = 0; i < experiences.length; i++) {
-    const currentDateIdx = dateMatches[i]?.index || 0;
-    const nextDateIdx = dateMatches[i + 1]?.index || expText.length;
+    const currentDateIdx = dateMatches[i]?.index ?? 0;
+    const nextDateIdx = dateMatches[i + 1]?.index ?? expText.length;
     
     // Find bullets between this job's date and the next job's date
     for (const bullet of bullets) {
@@ -243,18 +243,36 @@ function extractEducation(text: string): Array<{ id: string; institution: string
   
   const eduText = eduMatch[1];
   
-  // Look for university/college names
-  const uniMatch = eduText.match(/([A-Z][A-Za-z\s]+(?:University|College|Institute|School)[A-Za-z\s,]*)/i);
-  const degreeMatch = eduText.match(/((?:B\.?S\.?|B\.?A\.?|M\.?S\.?|M\.?A\.?|MBA|Ph\.?D\.?|Bachelor|Master|Associate)[A-Za-z\s,\.in]*)/i);
-  const yearMatch = eduText.match(/\b(19|20)\d{2}\b/);
+  // Find all institution matches
+  const uniPattern = /([A-Z][A-Za-z\s]+(?:University|College|Institute|School)[A-Za-z\s,]*)/gi;
+  const degreePattern = /((?:B\.?S\.?|B\.?A\.?|M\.?S\.?|M\.?A\.?|MBA|Ph\.?D\.?|Bachelor|Master|Associate)[A-Za-z\s,\.in]*)/gi;
+  const yearPattern = /\b(19|20)\d{2}\b/g;
   
-  if (uniMatch || degreeMatch) {
+  const institutions: string[] = [];
+  const degrees: string[] = [];
+  const years: string[] = [];
+  
+  let match;
+  while ((match = uniPattern.exec(eduText)) !== null) {
+    institutions.push(match[1].trim());
+  }
+  while ((match = degreePattern.exec(eduText)) !== null) {
+    degrees.push(match[1].trim());
+  }
+  while ((match = yearPattern.exec(eduText)) !== null) {
+    years.push(match[0]);
+  }
+  
+  // Create education entries - pair institutions with degrees where possible
+  const entryCount = Math.max(institutions.length, degrees.length, 1);
+  for (let i = 0; i < entryCount && (institutions[i] || degrees[i]); i++) {
     education.push({
-      id: 'edu-1',
-      institution: uniMatch ? uniMatch[1].trim() : "",
-      degree: degreeMatch ? degreeMatch[1].trim() : "",
+      id: `edu-${i + 1}`,
+      institution: institutions[i] || "",
+      degree: degrees[i] || "",
       field: "",
-      startDate: yearMatch ? yearMatch[0] : "",
+      startDate: years[i * 2] || years[i] || "",
+      endDate: years[i * 2 + 1] || undefined,
     });
   }
   

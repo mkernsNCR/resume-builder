@@ -1,6 +1,28 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("API Endpoints", () => {
+  let testResumeId: string;
+
+  test.beforeAll(async ({ request }) => {
+    // Create a known test resume for isolated testing
+    const response = await request.post("/api/resumes", {
+      data: {
+        title: "API Test Fixture Resume",
+        template: "modern",
+        content: { fullName: "API Test User" },
+      },
+    });
+    const created = await response.json();
+    testResumeId = created.id;
+  });
+
+  test.afterAll(async ({ request }) => {
+    // Clean up test fixture
+    if (testResumeId) {
+      await request.delete(`/api/resumes/${testResumeId}`);
+    }
+  });
+
   test("GET /api/resumes should return array of resumes", async ({ request }) => {
     const response = await request.get("/api/resumes");
     
@@ -9,24 +31,21 @@ test.describe("API Endpoints", () => {
     
     const resumes = await response.json();
     expect(Array.isArray(resumes)).toBeTruthy();
-    expect(resumes.length).toBeGreaterThan(0);
+    // Verify our test fixture exists
+    const testResume = resumes.find((r: any) => r.id === testResumeId);
+    expect(testResume).toBeDefined();
   });
 
   test("GET /api/resumes/:id should return single resume", async ({ request }) => {
-    // First get all resumes to find an ID
-    const listResponse = await request.get("/api/resumes");
-    const resumes = await listResponse.json();
-    const resumeId = resumes[0].id;
-
-    // Get single resume
-    const response = await request.get(`/api/resumes/${resumeId}`);
+    // Use the test fixture resume created in beforeAll
+    const response = await request.get(`/api/resumes/${testResumeId}`);
     
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
     
     const resume = await response.json();
-    expect(resume.id).toBe(resumeId);
-    expect(resume.title).toBeDefined();
+    expect(resume.id).toBe(testResumeId);
+    expect(resume.title).toBe("API Test Fixture Resume");
     expect(resume.content).toBeDefined();
   });
 
@@ -68,23 +87,34 @@ test.describe("API Endpoints", () => {
   });
 
   test("PUT /api/resumes/:id should update resume", async ({ request }) => {
-    // First get all resumes to find an ID
-    const listResponse = await request.get("/api/resumes");
-    const resumes = await listResponse.json();
-    const resumeId = resumes[0].id;
-
-    // Update the resume
-    const response = await request.put(`/api/resumes/${resumeId}`, {
+    // Create isolated resume for this test
+    const createResponse = await request.post("/api/resumes", {
       data: {
-        title: "Updated Title via E2E",
+        title: "Resume To Update",
+        template: "modern",
+        content: { fullName: "Update Test" },
       },
     });
-    
-    expect(response.ok()).toBeTruthy();
-    expect(response.status()).toBe(200);
-    
-    const updated = await response.json();
-    expect(updated.title).toBe("Updated Title via E2E");
+    const created = await createResponse.json();
+    const resumeId = created.id;
+
+    try {
+      // Update the resume
+      const response = await request.put(`/api/resumes/${resumeId}`, {
+        data: {
+          title: "Updated Title via E2E",
+        },
+      });
+      
+      expect(response.ok()).toBeTruthy();
+      expect(response.status()).toBe(200);
+      
+      const updated = await response.json();
+      expect(updated.title).toBe("Updated Title via E2E");
+    } finally {
+      // Clean up
+      await request.delete(`/api/resumes/${resumeId}`);
+    }
   });
 
   test("DELETE /api/resumes/:id should delete resume", async ({ request }) => {

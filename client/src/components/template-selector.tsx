@@ -25,7 +25,7 @@ export function TemplateSelector({
               : ""
           }`}
           onClick={() => onSelectTemplate(template)}
-          data-testid={`template-${template}`}
+          data-testid={`template-option-${template}`}
         >
           <div className="relative">
             {/* Mini Preview */}

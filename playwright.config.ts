@@ -19,9 +19,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "PORT=3000 DATABASE_URL=postgresql://localhost:5432/resume_builder npm run dev",
+    command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      PORT: "3000",
+      DATABASE_URL: "postgresql://localhost:5432/resume_builder",
+    },
   },
 });

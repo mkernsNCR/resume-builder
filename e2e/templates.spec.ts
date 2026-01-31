@@ -4,8 +4,8 @@ test.describe("Resume Templates", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     
-    // Wait for resume cards to appear in sidebar
-    const resumeCard = page.locator("aside .cursor-pointer").first();
+    // Wait for resume cards to appear in sidebar using stable test-id selector
+    const resumeCard = page.getByTestId(/^resume-card-/).first();
     await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
   });
@@ -13,11 +13,11 @@ test.describe("Resume Templates", () => {
   test("should display template selector with all options", async ({ page }) => {
     await page.getByTestId("main-tab-template").click();
 
-    // Check all templates are available
-    await expect(page.getByText("Modern")).toBeVisible();
-    await expect(page.getByText("Classic")).toBeVisible();
-    await expect(page.getByText("Minimal")).toBeVisible();
-    await expect(page.getByText("Creative")).toBeVisible();
+    // Check all templates are available using stable test-id selectors
+    await expect(page.getByTestId("template-option-modern")).toBeVisible();
+    await expect(page.getByTestId("template-option-classic")).toBeVisible();
+    await expect(page.getByTestId("template-option-minimal")).toBeVisible();
+    await expect(page.getByTestId("template-option-creative")).toBeVisible();
   });
 
   test("should switch between templates", async ({ page }) => {
