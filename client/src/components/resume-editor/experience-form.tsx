@@ -71,7 +71,7 @@ function SortableExperienceItem({
       className="relative p-4 border rounded-lg bg-muted/30"
       data-testid={`experience-item-${index}`}
     >
-      <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing" aria-label="Drag to reorder item" {...attributes} {...listeners} role="button">
+      <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing" aria-label="Drag to reorder item" {...attributes} {...listeners} role="button" tabIndex={0}>
         <GripVertical className="w-5 h-5 text-muted-foreground" />
       </div>
       <div className="absolute top-3 right-3">

@@ -12,7 +12,13 @@ test.describe("API Endpoints", () => {
         content: { fullName: "API Test User" },
       },
     });
+    
+    // Fail fast if fixture creation failed
+    expect(response.ok(), "Failed to create test fixture resume").toBeTruthy();
+    expect(response.status()).toBe(201);
+    
     const created = await response.json();
+    expect(created.id, "Test fixture resume missing id").toBeDefined();
     testResumeId = created.id;
   });
 
