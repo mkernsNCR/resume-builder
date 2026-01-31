@@ -65,6 +65,35 @@ test.describe("Resume CRUD Operations", () => {
     await expect(page.getByText("Resume saved", { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
+  test("should show delete button and remove resume from sidebar", async ({ page, request }) => {
+    const createResponse = await request.post("/api/resumes", {
+      data: {
+        title: "Delete Button Test",
+        template: "modern",
+        content: {
+          fullName: "Delete Button Test",
+        },
+      },
+    });
+    expect(createResponse.ok()).toBeTruthy();
+    const created = await createResponse.json();
+    const resumeId = created.id;
+
+    await page.goto("/");
+
+    const resumeCard = page.getByTestId(`resume-card-${resumeId}`);
+    await expect(resumeCard).toBeVisible({ timeout: 10000 });
+
+    const deleteButton = page.getByTestId(`button-delete-resume-${resumeId}`);
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+
+    await expect(page.getByText("Resume deleted", { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByTestId(`resume-card-${resumeId}`)).toHaveCount(0);
+  });
+
   test("should skip upload and create resume manually", async ({ page }) => {
     await page.goto("/");
 
