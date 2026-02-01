@@ -261,6 +261,5 @@ export async function seedDatabase() {
       await storage.createResume(resume);
     }
     
-    console.log("Database seeded with sample resumes");
   }
 }

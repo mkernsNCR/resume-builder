@@ -44,7 +44,7 @@ test.describe("Home Page", () => {
 
     // Check preview panel is visible by default on desktop
     const previewToggle = page.getByTestId("button-toggle-preview");
-    
+
     if (await previewToggle.isVisible()) {
       await expect(page.getByText("Live Preview")).toBeVisible();
 
@@ -56,5 +56,77 @@ test.describe("Home Page", () => {
       await previewToggle.click();
       await expect(page.getByText("Hide Preview")).toBeVisible();
     }
+  });
+
+  test("should allow scrolling at various window sizes", async ({ page }) => {
+    await page.goto("/");
+
+    // Test at desktop size
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    // Scroll down to check content is reachable
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+
+    // Scroll back up
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(500);
+
+    // Verify header is still accessible after scrolling
+    await expect(page.getByText("Resume Builder")).toBeVisible();
+
+    // Test at tablet size
+    await page.setViewportSize({ width: 768, height: 1024 });
+
+    // Scroll down
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+
+    // Verify content is reachable
+    await expect(page.getByRole("banner").first()).toBeVisible();
+
+    // Test at mobile size
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    // Scroll down
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+
+    // Scroll up and verify sidebar toggle is accessible
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(500);
+
+    // Verify main content is still accessible
+    await expect(page.getByRole("main").first()).toBeVisible();
+  });
+
+  test("should allow scrolling to bottom elements in editor and preview", async ({ page }) => {
+    await page.goto("/");
+
+    // Set desktop viewport
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    // Click Edit tab to show the resume editor
+    await page.getByTestId("main-tab-edit").click();
+
+    // Scroll to bottom of editor content
+    const editorContent = page.locator("[role='main']").first();
+    await editorContent.evaluate((el) => el.scrollTop = el.scrollHeight);
+    await page.waitForTimeout(500);
+
+    // Click Template tab to show templates
+    await page.getByTestId("main-tab-template").click();
+
+    // Scroll to bottom of template selector
+    const templateCards = page.locator("body");
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+
+    // Verify we can scroll back up and interact with header
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(300);
+
+    // Verify Save button is still accessible
+    await expect(page.getByTestId("button-save")).toBeVisible();
   });
 });
