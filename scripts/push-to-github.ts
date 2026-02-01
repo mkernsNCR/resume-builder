@@ -8,7 +8,6 @@ async function pushToGitHub() {
     const octokit = await getUncachableGitHubClient();
     
     const { data: user } = await octokit.users.getAuthenticated();
-    console.log(`Authenticated as: ${user.login}`);
     
     const repoName = 'resume-builder';
     
@@ -19,20 +18,17 @@ async function pushToGitHub() {
         repo: repoName
       });
       repoExists = true;
-      console.log(`Repository ${repoName} already exists`);
     } catch (e: any) {
       if (e.status !== 404) throw e;
     }
     
     if (!repoExists) {
-      console.log(`Creating repository: ${repoName}`);
       await octokit.repos.createForAuthenticatedUser({
         name: repoName,
         description: 'Resume Builder - A full-stack web application for creating professional resumes',
         private: false,
         auto_init: false
       });
-      console.log(`Repository created: https://github.com/${user.login}/${repoName}`);
     }
     
     const remoteUrl = `https://github.com/${user.login}/${repoName}.git`;
@@ -41,7 +37,6 @@ async function pushToGitHub() {
       execSync('git remote remove github 2>/dev/null || true', { stdio: 'pipe' });
     } catch (e) {}
     
-    console.log(`Adding remote: ${remoteUrl}`);
     execSync(`git remote add github ${remoteUrl}`, { stdio: 'inherit' });
     
     const { data: installation } = await octokit.apps.listInstallationsForAuthenticatedUser();
@@ -50,11 +45,8 @@ async function pushToGitHub() {
     
     const pushUrl = `https://x-access-token:${token}@github.com/${user.login}/${repoName}.git`;
     
-    console.log('Pushing to GitHub...');
     execSync(`git push ${pushUrl} HEAD:main --force`, { stdio: 'inherit' });
     
-    console.log(`\nSuccess! Your code is now on GitHub:`);
-    console.log(`https://github.com/${user.login}/${repoName}`);
     
   } catch (error) {
     console.error('Error pushing to GitHub:', error);
