@@ -460,7 +460,7 @@ export default function Home() {
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
-              className="flex-1 flex flex-col"
+              className="flex-1 flex flex-col overflow-hidden"
             >
               <div className="border-b px-4 py-2 flex items-center justify-between gap-2">
                 <TabsList className="h-9">
@@ -518,7 +518,7 @@ export default function Home() {
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 h-0">
                 <div className="p-4">
                   <TabsContent value="upload" className="m-0">
                     <div className="space-y-6">
