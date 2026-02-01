@@ -22,6 +22,12 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+/**
+ * Prepare a formatted log line combining a timestamp, source, and message.
+ *
+ * @param message - The message to include in the log line
+ * @param source - An optional label identifying the message source (defaults to "express")
+ */
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",

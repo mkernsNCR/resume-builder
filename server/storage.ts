@@ -80,7 +80,12 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
-// Seed data function
+/**
+ * Populate the database with sample resumes when no resumes exist.
+ *
+ * If the resumes table is empty, inserts a set of predefined sample resumes
+ * (three example resumes covering software engineering, product design, and data science).
+ */
 export async function seedDatabase() {
   const existingResumes = await storage.getAllResumes();
   
