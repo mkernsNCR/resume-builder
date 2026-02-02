@@ -88,7 +88,7 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
             <FolderKanban className="w-12 h-12 mx-auto mb-3 opacity-20" />
             <p>No projects added yet</p>
             <Button
-              variant="link"
+              variant="ghost"
               onClick={addProject}
               className="mt-2"
               data-testid="button-add-first-project"
