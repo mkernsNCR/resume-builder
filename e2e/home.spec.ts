@@ -110,10 +110,21 @@ test.describe("Home Page", () => {
     // Click Edit tab to show the resume editor
     await page.getByTestId("main-tab-edit").click();
 
-    // Wait for editor content to be visible then scroll
+    // Wait for editor content to be visible then scroll to bottom
     const editorContent = page.getByRole("main").first();
     await expect(editorContent).toBeVisible();
     await editorContent.evaluate((el) => el.scrollTop = el.scrollHeight);
+    
+    // Verify scroll reached bottom (or content doesn't need scrolling)
+    await expect(async () => {
+      const { scrollTop, scrollHeight, clientHeight } = await editorContent.evaluate((el) => ({
+        scrollTop: el.scrollTop,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      }));
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1 || scrollHeight <= clientHeight;
+      expect(atBottom).toBeTruthy();
+    }).toPass({ timeout: 5000 });
 
     // Click Template tab to show templates
     await page.getByTestId("main-tab-template").click();
