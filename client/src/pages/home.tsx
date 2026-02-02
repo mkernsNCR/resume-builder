@@ -331,7 +331,7 @@ export default function Home() {
             <h1 className="text-lg font-semibold">Resume Builder</h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pr-12">
             <Button
               variant="outline"
               size="sm"
