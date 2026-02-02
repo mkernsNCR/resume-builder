@@ -328,14 +328,14 @@ export default function Home() {
     <div className="h-screen flex flex-col min-h-0">
       {/* Header */}
       <header className="border-b bg-card shrink-0">
-        <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="max-w-screen-2xl mx-auto px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden"
+                  className="lg:hidden shrink-0"
                   data-testid="button-mobile-menu"
                 >
                   <Menu className="w-5 h-5" />
@@ -434,37 +434,39 @@ export default function Home() {
                 </ScrollArea>
               </SheetContent>
             </Sheet>
-            <FileText className="w-6 h-6 text-primary" />
-            <h1 className="text-lg font-semibold">Resume Builder</h1>
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+            <h1 className="text-base sm:text-lg font-semibold truncate">Resume Builder</h1>
           </div>
 
-          <div className="flex items-center gap-2 pr-12">
+          <div className="flex items-center gap-1 sm:gap-2 pr-10 sm:pr-12 shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handleSave}
               disabled={saveMutation.isPending}
               data-testid="button-save"
+              className="px-2 sm:px-3"
             >
               {saveMutation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Save className="w-4 h-4 mr-1.5" />
+                <Save className="w-4 h-4" />
               )}
-              Save
+              <span className="hidden sm:inline ml-1.5">Save</span>
             </Button>
             <Button
               size="sm"
               onClick={handleExportPDF}
               disabled={isExporting || !content.fullName}
               data-testid="button-export"
+              className="px-2 sm:px-3"
             >
               {isExporting ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Download className="w-4 h-4 mr-1.5" />
+                <Download className="w-4 h-4" />
               )}
-              Export PDF
+              <span className="hidden sm:inline ml-1.5">Export PDF</span>
             </Button>
           </div>
         </div>
