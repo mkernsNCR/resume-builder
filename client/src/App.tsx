@@ -23,7 +23,7 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <div className="relative">
-            <div className="fixed top-4 right-4 z-50">
+            <div className="fixed top-2 sm:top-3 right-2 sm:right-4 z-50">
               <ThemeToggle />
             </div>
             <Router />
