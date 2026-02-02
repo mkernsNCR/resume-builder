@@ -24,8 +24,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     env: {
-      PORT: "3000",
-      DATABASE_URL: "postgresql://localhost:5432/resume_builder",
+      PORT: process.env.PORT || "3000",
+      DATABASE_URL: process.env.DATABASE_URL || "postgresql://localhost:5432/resume_builder",
     },
   },
 });
