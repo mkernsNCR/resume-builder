@@ -117,7 +117,7 @@ export async function registerRoutes(
   // Get single resume
   app.get("/api/resumes/:id", async (req: Request, res: Response) => {
     try {
-      const resume = await storage.getResume(req.params.id);
+      const resume = await storage.getResume(req.params.id as string);
       if (!resume) {
         return res.status(404).json({ error: "Resume not found" });
       }
@@ -153,7 +153,7 @@ export async function registerRoutes(
       }
 
       // Check if resume exists
-      const existingResume = await storage.getResume(req.params.id);
+      const existingResume = await storage.getResume(req.params.id as string);
       if (!existingResume) {
         return res.status(404).json({ error: "Resume not found" });
       }
@@ -170,7 +170,7 @@ export async function registerRoutes(
           : existingResume.title;
       }
 
-      const resume = await storage.updateResume(req.params.id, updateData);
+      const resume = await storage.updateResume(req.params.id as string, updateData);
       res.json(resume);
     } catch (error) {
       console.error("Error updating resume:", error);
@@ -181,7 +181,7 @@ export async function registerRoutes(
   // Delete resume
   app.delete("/api/resumes/:id", async (req: Request, res: Response) => {
     try {
-      const deleted = await storage.deleteResume(req.params.id);
+      const deleted = await storage.deleteResume(req.params.id as string);
       if (!deleted) {
         return res.status(404).json({ error: "Resume not found" });
       }

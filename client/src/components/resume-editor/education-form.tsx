@@ -63,7 +63,7 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
             <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-20" />
             <p>No education added yet</p>
             <Button
-              variant="link"
+              variant="ghost"
               onClick={addEducation}
               className="mt-2"
               data-testid="button-add-first-education"

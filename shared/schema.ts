@@ -84,7 +84,9 @@ export const resumes = pgTable("resumes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertResumeSchema = createInsertSchema(resumes).omit({
+export const insertResumeSchema = createInsertSchema(resumes, {
+  content: resumeContentSchema,
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
