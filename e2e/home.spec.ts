@@ -66,11 +66,12 @@ test.describe("Home Page", () => {
 
     // Scroll down to check content is reachable
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(500);
+    // Wait for scroll to complete (or content fits in viewport)
+    await page.waitForFunction(() => window.scrollY > 0 || document.body.scrollHeight <= window.innerHeight);
 
     // Scroll back up
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.scrollY === 0);
 
     // Verify header is still accessible after scrolling
     await expect(page.getByText("Resume Builder")).toBeVisible();
@@ -80,7 +81,7 @@ test.describe("Home Page", () => {
 
     // Scroll down
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.scrollY > 0 || document.body.scrollHeight <= window.innerHeight);
 
     // Verify content is reachable
     await expect(page.getByRole("banner").first()).toBeVisible();
@@ -90,11 +91,11 @@ test.describe("Home Page", () => {
 
     // Scroll down
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.scrollY > 0 || document.body.scrollHeight <= window.innerHeight);
 
     // Scroll up and verify sidebar toggle is accessible
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.scrollY === 0);
 
     // Verify main content is still accessible
     await expect(page.getByRole("main").first()).toBeVisible();
@@ -109,22 +110,21 @@ test.describe("Home Page", () => {
     // Click Edit tab to show the resume editor
     await page.getByTestId("main-tab-edit").click();
 
-    // Scroll to bottom of editor content
-    const editorContent = page.locator("[role='main']").first();
+    // Wait for editor content to be visible then scroll
+    const editorContent = page.getByRole("main").first();
+    await expect(editorContent).toBeVisible();
     await editorContent.evaluate((el) => el.scrollTop = el.scrollHeight);
-    await page.waitForTimeout(500);
 
     // Click Template tab to show templates
     await page.getByTestId("main-tab-template").click();
 
     // Scroll to bottom of template selector
-    const templateCards = page.locator("body");
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.scrollY > 0 || document.body.scrollHeight <= window.innerHeight);
 
     // Verify we can scroll back up and interact with header
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => window.scrollY === 0);
 
     // Verify Save button is still accessible
     await expect(page.getByTestId("button-save")).toBeVisible();
