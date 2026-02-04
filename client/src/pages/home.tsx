@@ -12,6 +12,7 @@ import { ExtractedTextDisplay } from "@/components/extracted-text-display";
 import { ResumeEditor } from "@/components/resume-editor";
 import { TemplateSelector } from "@/components/template-selector";
 import { ResumePreview } from "@/components/resume-templates";
+import { PAGE_WIDTH, PAGE_HEIGHT, TOP_MARGIN } from "@/lib/page-constants";
 import type { Resume, ResumeContent, ResumeTemplate } from "@shared/schema";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -220,9 +221,6 @@ export default function Home() {
   const handleExportPDF = async () => {
     setIsExporting(true);
     
-    const PAGE_WIDTH = 816;
-    const PAGE_HEIGHT = 1056;
-    
     try {
       // Create a temporary container for full-size rendering
       const tempContainer = document.createElement("div");
@@ -233,12 +231,46 @@ export default function Home() {
       tempContainer.style.backgroundColor = "white";
       document.body.appendChild(tempContainer);
 
-      // Find the scrollable content to measure total height
+      // Try to find the visible preview, but fall back to creating a temporary one
+      let resumePreview: Element | null = null;
       const contentScroll = printRef.current?.querySelector(".resume-content-scroll");
-      const resumePreview = contentScroll?.querySelector(".resume-preview");
+      resumePreview = contentScroll?.querySelector(".resume-preview") ?? null;
       
+      // If visible preview is not found, create a temporary hidden one for export
+      let temporaryPreviewContainer: HTMLDivElement | null = null;
       if (!resumePreview) {
-        throw new Error("Resume preview not found");
+        // Import and render the template directly for export
+        const { ModernTemplate } = await import("@/components/resume-templates/modern-template");
+        const { ClassicTemplate } = await import("@/components/resume-templates/classic-template");
+        const { MinimalTemplate } = await import("@/components/resume-templates/minimal-template");
+        const { CreativeTemplate } = await import("@/components/resume-templates/creative-template");
+        const ReactDOMClient = await import("react-dom/client");
+        const React = await import("react");
+        
+        temporaryPreviewContainer = document.createElement("div");
+        temporaryPreviewContainer.style.position = "absolute";
+        temporaryPreviewContainer.style.left = "-9999px";
+        temporaryPreviewContainer.style.top = "0";
+        document.body.appendChild(temporaryPreviewContainer);
+        
+        const TemplateComponent = 
+          template === "modern" ? ModernTemplate :
+          template === "classic" ? ClassicTemplate :
+          template === "minimal" ? MinimalTemplate :
+          template === "creative" ? CreativeTemplate : ModernTemplate;
+        
+        const root = ReactDOMClient.createRoot(temporaryPreviewContainer);
+        root.render(React.createElement(TemplateComponent, { content, allowOverflow: true }));
+        
+        // Wait for render
+        await new Promise(r => setTimeout(r, 200));
+        
+        resumePreview = temporaryPreviewContainer.querySelector(".resume-preview");
+        if (!resumePreview) {
+          root.unmount();
+          document.body.removeChild(temporaryPreviewContainer);
+          throw new Error("Failed to create temporary preview for export");
+        }
       }
 
       // Clone for measurement and modification
@@ -298,7 +330,6 @@ export default function Home() {
       const imgHeight = 792;
 
       // Render each page from the adjusted clone
-      const TOP_MARGIN = 32; // Match p-8 (2rem = 32px) from template
       
       for (let pageNum = 0; pageNum < numPages; pageNum++) {
         // Create a page container with clipped content
@@ -368,6 +399,9 @@ export default function Home() {
 
       // Cleanup
       document.body.removeChild(tempContainer);
+      if (temporaryPreviewContainer && document.body.contains(temporaryPreviewContainer)) {
+        document.body.removeChild(temporaryPreviewContainer);
+      }
 
       toast({
         title: "Export complete",

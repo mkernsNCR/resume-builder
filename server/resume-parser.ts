@@ -128,11 +128,18 @@ function extractTitle(text: string): string {
   const titleKeywords = ['engineer', 'developer', 'designer', 'manager', 'analyst', 
     'architect', 'director', 'lead', 'senior', 'specialist', 'consultant', 'tester', 'intern'];
   
-  // Only look in the header area (before EXPERIENCE, SKILLS, TECH STACK sections)
-  const headerMatch = text.match(/^([\s\S]*?)(?=EXPERIENCE|SKILLS|TECH STACK)/i);
-  if (!headerMatch) return "";
+  // Only look in the header area (before major sections)
+  // Use broader set of section markers
+  const headerMatch = text.match(/^([\s\S]*?)(?=EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE|PROJECTS|EDUCATION|SKILLS|TECH STACK|SUMMARY|PROFILE)/i);
   
-  const headerText = headerMatch[1];
+  // Fall back to first 10 lines if no section marker found
+  let headerText: string;
+  if (headerMatch) {
+    headerText = headerMatch[1];
+  } else {
+    const lines = text.split(/\n/).slice(0, 10);
+    headerText = lines.join('\n');
+  }
   const lines = headerText.split(/\n/).map(l => l.trim()).filter(l => l);
   
   // First pass: look for a standalone title line (short line with title keyword)
@@ -345,37 +352,22 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
     bullets.push({ text: bulletText, index: bulletMatch.index });
   }
   
-  // Debug: log date matches and bullets
-  console.log('\n=== DATE MATCHES ===');
-  dateMatches.forEach((dm, i) => console.log(`  Job ${i + 1}: "${dm.fullMatch}" at index ${dm.index}`));
-  console.log('\n=== BULLETS ===');
-  bullets.forEach((b, i) => console.log(`  Bullet ${i + 1} at index ${b.index}: "${b.text.slice(0, 50)}..."`));
-  
   for (let i = 0; i < experiences.length; i++) {
     const currentDateIdx = dateMatches[i]?.index ?? 0;
     const nextDateIdx = dateMatches[i + 1]?.index ?? expText.length;
     
-    console.log(`\nJob ${i + 1} (${experiences[i].company}): range ${currentDateIdx} - ${nextDateIdx}`);
-    
     // Find bullets between this job's date and the next job's date
     for (const bullet of bullets) {
       const inRange = bullet.index > currentDateIdx && bullet.index < nextDateIdx;
-      if (inRange) {
-        console.log(`  Bullet at ${bullet.index} IN RANGE: "${bullet.text.slice(0, 40)}..."`);
-      }
       if (inRange && experiences[i].highlights.length < 5) {
         // Skip if bullet contains next job's info
         const hasNextJobInfo = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s*[-–—]/i.test(bullet.text);
         // Minimum length of 10 chars to filter noise
         if (bullet.text.length > 10 && !hasNextJobInfo) {
           experiences[i].highlights.push(bullet.text.slice(0, 300));
-          console.log(`    -> ADDED`);
-        } else {
-          console.log(`    -> SKIPPED (len=${bullet.text.length}, hasNextJobInfo=${hasNextJobInfo})`);
         }
       }
     }
-    console.log(`  Total highlights: ${experiences[i].highlights.length}`);
   }
   
   return experiences;

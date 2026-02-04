@@ -5,6 +5,7 @@ import { ClassicTemplate } from "./classic-template";
 import { MinimalTemplate } from "./minimal-template";
 import { CreativeTemplate } from "./creative-template";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { PAGE_HEIGHT, PAGE_WIDTH, CONTENT_HEIGHT } from "@/lib/page-constants";
 
 interface PaginatedResumeProps {
   content: ResumeContent;
@@ -12,21 +13,19 @@ interface PaginatedResumeProps {
   showPageControls?: boolean;
 }
 
-const PAGE_HEIGHT = 1056; // 11 inches at 96 DPI
-const PAGE_WIDTH = 816;   // 8.5 inches at 96 DPI
-const CONTENT_HEIGHT = PAGE_HEIGHT - 64; // Account for padding
-
 export function PaginatedResume({ content, template, showPageControls = true }: PaginatedResumeProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const measureRef = useRef<HTMLDivElement>(null);
 
-  // Measure content to determine total pages
+  // Measure content to determine total pages and clamp currentPage
   useEffect(() => {
     if (measureRef.current) {
       const contentHeight = measureRef.current.scrollHeight;
-      const pages = Math.ceil(contentHeight / CONTENT_HEIGHT);
-      setTotalPages(Math.max(1, pages));
+      const pages = Math.max(1, Math.ceil(contentHeight / CONTENT_HEIGHT));
+      setTotalPages(pages);
+      // Clamp currentPage to not exceed new total
+      setCurrentPage(prev => Math.min(prev, pages));
     }
   }, [content, template]);
 
@@ -38,6 +37,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
       {showPageControls && totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mb-4">
           <button
+            type="button"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
             className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
@@ -48,6 +48,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             Page {currentPage} of {totalPages}
           </span>
           <button
+            type="button"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
             className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
