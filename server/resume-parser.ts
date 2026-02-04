@@ -159,6 +159,9 @@ function extractTitle(text: string): string {
   // Second pass: extract title from summary text like "front-end engineer with..."
   const summaryText = headerText.toLowerCase();
   for (const kw of titleKeywords) {
+    // SAFETY NOTE: kw originates from the hardcoded titleKeywords array (not user input),
+    // so constructing new RegExp with kw interpolation is safe from ReDoS attacks.
+    // titleKeywords contains simple lowercase strings like 'engineer', 'developer', etc.
     const titleMatch = summaryText.match(new RegExp(`((?:senior|junior|lead|staff|principal)?\\s*(?:front[- ]?end|back[- ]?end|full[- ]?stack|software|web|ui|ux)?\\s*${kw})`, 'i'));
     if (titleMatch) {
       // Capitalize properly
@@ -404,17 +407,24 @@ function extractEducation(text: string): Array<{ id: string; institution: string
     const hasDegree = degreeKeywords.some(kw => lower.includes(kw));
     
     if (hasInstitution) {
-      // Save previous entry if exists
-      if (currentEntry && currentEntry.institution) {
-        education.push({
-          id: `edu-${education.length + 1}`,
-          institution: currentEntry.institution,
-          degree: currentEntry.degree,
-          field: currentEntry.field,
-          startDate: currentEntry.year,
-        });
+      // Check if we have an incomplete entry (degree-first case with empty institution)
+      if (currentEntry && !currentEntry.institution.trim()) {
+        // Merge: fill in the missing institution instead of pushing incomplete entry
+        currentEntry.institution = line;
+        if (yearMatch) currentEntry.year = yearMatch[0];
+      } else {
+        // Save previous entry if it has both institution and degree
+        if (currentEntry && currentEntry.institution.trim() && currentEntry.degree.trim()) {
+          education.push({
+            id: `edu-${education.length + 1}`,
+            institution: currentEntry.institution,
+            degree: currentEntry.degree,
+            field: currentEntry.field,
+            startDate: currentEntry.year,
+          });
+        }
+        currentEntry = { institution: line, degree: '', field: '', year: yearMatch?.[0] || '' };
       }
-      currentEntry = { institution: line, degree: '', field: '', year: yearMatch?.[0] || '' };
     } else if (hasDegree) {
       if (currentEntry) {
         currentEntry.degree = line;
@@ -427,8 +437,8 @@ function extractEducation(text: string): Array<{ id: string; institution: string
     }
   }
   
-  // Don't forget the last entry
-  if (currentEntry && (currentEntry.institution || currentEntry.degree)) {
+  // Don't forget the last entry - only push if both institution and degree are non-empty
+  if (currentEntry && currentEntry.institution.trim() && currentEntry.degree.trim()) {
     education.push({
       id: `edu-${education.length + 1}`,
       institution: currentEntry.institution,

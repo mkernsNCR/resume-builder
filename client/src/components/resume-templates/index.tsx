@@ -3,7 +3,7 @@ import { ModernTemplate } from "./modern-template";
 import { ClassicTemplate } from "./classic-template";
 import { MinimalTemplate } from "./minimal-template";
 import { CreativeTemplate } from "./creative-template";
-import { PaginatedResume, PaginatedResumeForPrint, getTemplateComponent, TEMPLATE_COMPONENTS } from "./paginated-resume";
+import { PaginatedResume, getTemplateComponent } from "./paginated-resume";
 
 interface ResumePreviewProps {
   content: ResumeContent;

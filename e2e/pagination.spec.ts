@@ -107,14 +107,20 @@ test.describe("Pagination", () => {
   test("should render resume preview container with correct dimensions", async ({ page }) => {
     // Set a large viewport to ensure preview isn't scaled
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.waitForTimeout(300);
 
-    // Check that the page container has proper dimensions
+    // Wait for the page container to be visible
     const pageContainer = page.locator(".resume-page-container");
-    await expect(pageContainer).toBeVisible();
+    await pageContainer.waitFor({ state: "visible" });
+
+    // Wait for layout to stabilize - ensure bounding box has non-zero dimensions
+    await page.waitForFunction(() => {
+      const container = document.querySelector(".resume-page-container");
+      if (!container) return false;
+      const rect = container.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
 
     // Verify the container exists and has reasonable dimensions
-    // The actual rendered size may be scaled based on viewport
     const box = await pageContainer.boundingBox();
     expect(box).toBeTruthy();
     if (box) {
@@ -141,13 +147,17 @@ test.describe("Pagination", () => {
 
       // Find and click delete buttons to remove experience entries
       const deleteButtons = page.locator("button[aria-label*='Delete']");
-      const deleteCount = await deleteButtons.count();
+      const initialDeleteCount = await deleteButtons.count();
       
       // Delete up to 3 entries to reduce content
-      for (let i = 0; i < Math.min(3, deleteCount); i++) {
-        if (await deleteButtons.first().isVisible()) {
+      const entriesToDelete = Math.min(3, initialDeleteCount);
+      for (let i = 0; i < entriesToDelete; i++) {
+        const currentCount = await deleteButtons.count();
+        if (currentCount > 0 && await deleteButtons.first().isVisible()) {
           await deleteButtons.first().click();
-          await page.waitForTimeout(100);
+          // Wait for the delete button count to decrease
+          const expectedCount = currentCount - 1;
+          await expect(deleteButtons).toHaveCount(expectedCount, { timeout: 2000 });
         }
       }
 
