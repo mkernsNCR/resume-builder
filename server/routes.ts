@@ -52,33 +52,11 @@ const updateResumeSchema = z.object({
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
-    // Use pdfjs-dist with proper Node.js configuration
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    
-    // Disable worker for server-side usage
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-    
+    // Use pdf-parse v1 - simple and reliable for Node.js
+    const pdfParse = require("pdf-parse");
     const dataBuffer = fs.readFileSync(filePath);
-    const uint8Array = new Uint8Array(dataBuffer);
-    
-    const loadingTask = pdfjsLib.getDocument({ 
-      data: uint8Array,
-      disableFontFace: true,
-      useSystemFonts: true,
-    });
-    const pdf = await loadingTask.promise;
-    
-    let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
-      fullText += pageText + "\n";
-    }
-    
-    return fullText.trim();
+    const data = await pdfParse(dataBuffer);
+    return data.text.trim();
   } catch (error) {
     console.error("PDF extraction error:", error);
     return "";
