@@ -175,7 +175,7 @@ function extractTitle(text: string): string {
 function extractSummary(text: string): string {
   // Try to find a labeled summary/profile section first
   // Allow end-of-string as an alternative to following section
-  const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE|ABOUT)\s*\n?\s*([\s\S]*?)(?=\n\s*(?:TECH STACK|EXPERIENCE|EDUCATION|SKILLS)\b|$)/i);
+  const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE|ABOUT)\s*\n?\s*([\s\S]*?)(?=(?:^|\n)\s*(?:TECH STACK|EXPERIENCE|WORK EXPERIENCE|EDUCATION|SKILLS)\b|$)/i);
   if (summaryMatch) {
     // Extract summary content, removing contact info lines
     let content = summaryMatch[1];
@@ -244,8 +244,8 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
   const experiences: Array<{ id: string; company: string; position: string; startDate: string; endDate: string; highlights: string[] }> = [];
   
   // Find experience section
-  // Anchor EXPERIENCE header to start of line to avoid matching mid-paragraph
-  const expMatch = text.match(/^\s*EXPERIENCE\s+([\s\S]*?)(?=^\s*(?:EDUCATION|SKILLS|PROJECTS|CERTIFICATIONS)\s*$|$)/im);
+  // Match EXPERIENCE (or variations) followed by content until next section or end
+  const expMatch = text.match(/(?:^|\n)\s*(?:EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE)\s*\n([\s\S]*?)(?=(?:^|\n)\s*(?:EDUCATION|SKILLS|PROJECTS|CERTIFICATIONS)\s*(?:\n|$)|$)/i);
   if (!expMatch) return experiences;
   
   // Clean up the experience text - remove page break artifacts like "PROFILE" headers mid-section
