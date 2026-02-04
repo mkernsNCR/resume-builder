@@ -3,11 +3,15 @@ import { Mail, Phone, MapPin, Linkedin, Globe } from "lucide-react";
 
 interface ModernTemplateProps {
   content: ResumeContent;
+  allowOverflow?: boolean;
 }
 
-export function ModernTemplate({ content }: ModernTemplateProps) {
+export function ModernTemplate({ content, allowOverflow = false }: ModernTemplateProps) {
   return (
-    <div className="resume-preview bg-white p-8 w-[816px] h-[1056px] overflow-hidden" style={{ aspectRatio: '8.5 / 11' }}>
+    <div 
+      className={`resume-preview bg-white p-8 w-[816px] ${allowOverflow ? '' : 'h-[1056px] overflow-hidden'}`}
+      style={allowOverflow ? undefined : { aspectRatio: '8.5 / 11' }}
+    >
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-1">

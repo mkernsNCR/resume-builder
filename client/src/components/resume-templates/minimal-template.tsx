@@ -2,11 +2,15 @@ import type { ResumeContent } from "@shared/schema";
 
 interface MinimalTemplateProps {
   content: ResumeContent;
+  allowOverflow?: boolean;
 }
 
-export function MinimalTemplate({ content }: MinimalTemplateProps) {
+export function MinimalTemplate({ content, allowOverflow = false }: MinimalTemplateProps) {
   return (
-    <div className="resume-preview bg-white p-8 w-[816px] h-[1056px] overflow-hidden" style={{ aspectRatio: '8.5 / 11' }}>
+    <div 
+      className={`resume-preview bg-white p-8 w-[816px] ${allowOverflow ? '' : 'h-[1056px] overflow-hidden'}`}
+      style={allowOverflow ? undefined : { aspectRatio: '8.5 / 11' }}
+    >
       {/* Header - Clean and Simple */}
       <header className="mb-8">
         <h1 className="text-2xl font-light text-gray-900 tracking-wide">

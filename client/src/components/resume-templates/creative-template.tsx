@@ -3,11 +3,15 @@ import { Mail, Phone, MapPin, Linkedin, Globe } from "lucide-react";
 
 interface CreativeTemplateProps {
   content: ResumeContent;
+  allowOverflow?: boolean;
 }
 
-export function CreativeTemplate({ content }: CreativeTemplateProps) {
+export function CreativeTemplate({ content, allowOverflow = false }: CreativeTemplateProps) {
   return (
-    <div className="resume-preview bg-white w-[816px] h-[1056px] overflow-hidden flex" style={{ aspectRatio: '8.5 / 11' }}>
+    <div 
+      className={`resume-preview bg-white w-[816px] flex ${allowOverflow ? '' : 'h-[1056px] overflow-hidden'}`}
+      style={allowOverflow ? undefined : { aspectRatio: '8.5 / 11' }}
+    >
       {/* Left Sidebar - 508 Compliant with WCAG 2.1 AA contrast ratios */}
       <aside className="w-[240px] bg-slate-800 text-white p-6 flex-shrink-0">
         {/* Name and Title */}
