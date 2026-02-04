@@ -45,11 +45,13 @@ A modern, full-stack resume builder application that allows users to create, edi
 | jsPDF | PDF generation |
 
 ### Development
-| Technology | Purpose |
-|------------|---------|
+| Technology | Version | Purpose |
+|------------|---------|---------|
 | Vite | 7.3.0 | Build tool & dev server |
 | tsx | 4.20.5 | TypeScript execution |
 | Drizzle Kit | 0.31.8 | Database migrations |
+| Vitest | 4.x | Unit testing |
+| Playwright | - | End-to-end testing |
 
 ## 🚀 Getting Started
 
@@ -147,6 +149,14 @@ resume-builder/
 │   └── vite.ts             # Vite dev server integration
 ├── shared/                 # Shared code between client/server
 │   └── schema.ts           # Zod schemas & Drizzle tables
+├── tests/                  # Test suites
+│   └── unit/
+│       ├── server/         # Backend unit tests
+│       └── client/         # Frontend unit tests
+├── e2e/                    # End-to-end Playwright tests
+│   ├── api.spec.ts
+│   ├── home.spec.ts
+│   └── ...
 ├── drizzle.config.ts       # Drizzle ORM configuration
 ├── tailwind.config.ts      # Tailwind CSS configuration
 ├── vite.config.ts          # Vite build configuration
@@ -237,6 +247,18 @@ npm run start
 
 # Push schema changes to database
 npm run db:push
+
+# Run unit tests (regression tests)
+npm run test:unit
+
+# Run unit tests in watch mode
+npm run test:unit:watch
+
+# Run e2e tests
+npm test
+
+# Run e2e tests with UI
+npm run test:ui
 ```
 
 ### Code Style
