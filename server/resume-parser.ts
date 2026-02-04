@@ -175,7 +175,7 @@ function extractTitle(text: string): string {
 function extractSummary(text: string): string {
   // Try to find a labeled summary/profile section first
   // Allow end-of-string as an alternative to following section
-  const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE|ABOUT)\s*\n?\s*([\s\S]*?)(?=(?:^|\n)\s*(?:TECH STACK|EXPERIENCE|WORK EXPERIENCE|EDUCATION|SKILLS)\b|$)/i);
+  const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE|ABOUT)\s*\n?\s*([\s\S]*?)(?=(?:^|\n)\s*(?:TECH STACK|EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE|EDUCATION|SKILLS)\b|$)/i);
   if (summaryMatch) {
     // Extract summary content, removing contact info lines
     let content = summaryMatch[1];

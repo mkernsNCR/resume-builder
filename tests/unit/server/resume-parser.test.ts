@@ -118,8 +118,8 @@ Company ABC  Jan 2020 - Present`;
       expect(result.summary).toContain('Forward-thinking developer');
     });
 
-    it.todo('should extract summary at end of document - currently unsupported', () => {
-      // TODO: Parser currently only extracts SUMMARY before EXPERIENCE
+    // TODO(#1): Support SUMMARY section appearing after EXPERIENCE
+    it.skip('should extract summary at end of document (SEE ISSUE #1)', () => {
       const text = `John Doe
 john@email.com
 
@@ -249,7 +249,19 @@ React, TypeScript, JavaScript, Node.js, PostgreSQL`;
       expect(result.skills?.length).toBeGreaterThan(0);
     });
 
-    it.todo('should extract skills from TECH STACK section - needs regex fix for section order');
+    // TODO(#2): Support TECH STACK as skills section header when appearing before EXPERIENCE
+    it.skip('should extract skills from TECH STACK section (SEE ISSUE #2)', () => {
+      const text = `John Doe
+
+TECH STACK
+React 18, TypeScript, JavaScript ES6+, HTML5, CSS3/Sass
+
+EXPERIENCE
+Company  Jan 2020 - Present`;
+
+      const result = parseResumeText(text);
+      expect(result.skills?.some((s: { name: string }) => s.name.toLowerCase().includes('react'))).toBe(true);
+    });
   });
 
   describe('education extraction', () => {

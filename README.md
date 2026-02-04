@@ -45,6 +45,7 @@ A modern, full-stack resume builder application that allows users to create, edi
 | jsPDF | PDF generation |
 
 ### Development
+
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Vite | 7.3.0 | Build tool & dev server |
@@ -150,13 +151,13 @@ resume-builder/
 ├── shared/                 # Shared code between client/server
 │   └── schema.ts           # Zod schemas & Drizzle tables
 ├── tests/                  # Test suites
-│   └── unit/
-│       ├── server/         # Backend unit tests
-│       └── client/         # Frontend unit tests
-├── e2e/                    # End-to-end Playwright tests
-│   ├── api.spec.ts
-│   ├── home.spec.ts
-│   └── ...
+│   ├── unit/
+│   │   ├── server/         # Backend unit tests
+│   │   └── client/         # Frontend unit tests
+│   └── e2e/                # End-to-end Playwright tests
+│       ├── api.spec.ts
+│       ├── home.spec.ts
+│       └── ...
 ├── drizzle.config.ts       # Drizzle ORM configuration
 ├── tailwind.config.ts      # Tailwind CSS configuration
 ├── vite.config.ts          # Vite build configuration
