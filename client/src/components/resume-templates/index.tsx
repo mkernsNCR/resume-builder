@@ -3,7 +3,7 @@ import { ModernTemplate } from "./modern-template";
 import { ClassicTemplate } from "./classic-template";
 import { MinimalTemplate } from "./minimal-template";
 import { CreativeTemplate } from "./creative-template";
-import { PaginatedResume, PaginatedResumeForPrint } from "./paginated-resume";
+import { PaginatedResume, PaginatedResumeForPrint, getTemplateComponent, TEMPLATE_COMPONENTS } from "./paginated-resume";
 
 interface ResumePreviewProps {
   content: ResumeContent;
@@ -17,18 +17,8 @@ export function ResumePreview({ content, template, paginated = false, showPageCo
     return <PaginatedResume content={content} template={template} showPageControls={showPageControls} />;
   }
   
-  switch (template) {
-    case "modern":
-      return <ModernTemplate content={content} />;
-    case "classic":
-      return <ClassicTemplate content={content} />;
-    case "minimal":
-      return <MinimalTemplate content={content} />;
-    case "creative":
-      return <CreativeTemplate content={content} />;
-    default:
-      return <ModernTemplate content={content} />;
-  }
+  const TemplateComponent = getTemplateComponent(template);
+  return <TemplateComponent content={content} />;
 }
 
 export const templateInfo: Record<

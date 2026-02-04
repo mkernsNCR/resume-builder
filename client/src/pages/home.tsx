@@ -271,6 +271,9 @@ export default function Home() {
           document.body.removeChild(temporaryPreviewContainer);
           throw new Error("Failed to create temporary preview for export");
         }
+        
+        // Unmount the React root now that we've found the preview element
+        root.unmount();
       }
 
       // Clone for measurement and modification
@@ -475,10 +478,9 @@ export default function Home() {
                       </div>
                     ) : resumes && resumes.length > 0 ? (
                       resumes.map((resume) => (
-                        <div
+                        <button
+                          type="button"
                           key={resume.id}
-                          role="button"
-                          tabIndex={0}
                           className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
                             currentResumeId === resume.id
                               ? "bg-background border-primary/50 shadow-sm ring-1 ring-primary/20"
@@ -488,7 +490,6 @@ export default function Home() {
                             loadResume(resume);
                             setMobileSidebarOpen(false);
                           }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { loadResume(resume); setMobileSidebarOpen(false); } }}
                           data-testid={`resume-card-mobile-${resume.id}`}
                         >
                           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
@@ -525,7 +526,7 @@ export default function Home() {
                               <Trash2 className="w-4 h-4" />
                             )}
                           </Button>
-                        </div>
+                        </button>
                       ))
                     ) : (
                       <div className="text-center py-12 px-4 border-2 border-dashed rounded-xl border-muted-foreground/20">
@@ -604,17 +605,15 @@ export default function Home() {
                 </div>
               ) : resumes && resumes.length > 0 ? (
                 resumes.map((resume) => (
-                  <div
+                  <button
+                    type="button"
                     key={resume.id}
-                    role="button"
-                    tabIndex={0}
                     className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
                       currentResumeId === resume.id
                         ? "bg-background border-primary/50 shadow-sm ring-1 ring-primary/20"
                         : "bg-card border-transparent hover:border-border/50 hover:bg-card/80"
                     }`}
                     onClick={() => loadResume(resume)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') loadResume(resume); }}
                     data-testid={`resume-card-${resume.id}`}
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
@@ -651,7 +650,7 @@ export default function Home() {
                         <Trash2 className="w-4 h-4" />
                       )}
                     </Button>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="text-center py-12 px-4 border-2 border-dashed rounded-xl border-muted-foreground/20">

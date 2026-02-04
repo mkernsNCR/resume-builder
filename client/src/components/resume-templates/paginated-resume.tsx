@@ -7,6 +7,18 @@ import { CreativeTemplate } from "./creative-template";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGE_HEIGHT, PAGE_WIDTH, CONTENT_HEIGHT } from "@/lib/page-constants";
 
+// Shared template component registry - used by both PaginatedResume and ResumePreview
+export const TEMPLATE_COMPONENTS = {
+  modern: ModernTemplate,
+  classic: ClassicTemplate,
+  minimal: MinimalTemplate,
+  creative: CreativeTemplate,
+} as const;
+
+export function getTemplateComponent(template: ResumeTemplate) {
+  return TEMPLATE_COMPONENTS[template] ?? ModernTemplate;
+}
+
 interface PaginatedResumeProps {
   content: ResumeContent;
   template: ResumeTemplate;
@@ -91,7 +103,7 @@ export function PaginatedResumeForPrint({ content, template }: Omit<PaginatedRes
   useEffect(() => {
     if (measureRef.current) {
       const contentHeight = measureRef.current.scrollHeight;
-      const numPages = Math.ceil(contentHeight / CONTENT_HEIGHT);
+      const numPages = Math.max(1, Math.ceil(contentHeight / CONTENT_HEIGHT));
       setPages(Array.from({ length: numPages }, (_, i) => i + 1));
     }
   }, [content, template]);
@@ -136,12 +148,3 @@ export function PaginatedResumeForPrint({ content, template }: Omit<PaginatedRes
   );
 }
 
-function getTemplateComponent(template: ResumeTemplate) {
-  switch (template) {
-    case "modern": return ModernTemplate;
-    case "classic": return ClassicTemplate;
-    case "minimal": return MinimalTemplate;
-    case "creative": return CreativeTemplate;
-    default: return ModernTemplate;
-  }
-}

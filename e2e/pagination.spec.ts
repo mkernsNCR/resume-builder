@@ -7,8 +7,8 @@ test.describe("Pagination", () => {
     const resumeCard = page.locator("aside .cursor-pointer").first();
     await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
-    // Wait for preview to render
-    await page.waitForTimeout(500);
+    // Wait for preview to render by waiting for the paginated resume container
+    await page.locator(".paginated-resume").waitFor({ state: "visible" });
   });
 
   test("should display pagination controls when resume has multiple pages", async ({ page }) => {
@@ -77,8 +77,10 @@ test.describe("Pagination", () => {
       // Click next until we reach the last page
       let attempts = 0;
       while (await nextButton.isEnabled() && attempts < 10) {
+        const currentText = await pageIndicator.textContent();
         await nextButton.click();
-        await page.waitForTimeout(300);
+        // Wait for page indicator to change
+        await expect(pageIndicator).not.toHaveText(currentText || "", { timeout: 2000 });
         attempts++;
       }
 
@@ -137,8 +139,39 @@ test.describe("Pagination", () => {
       await page.getByTestId("main-tab-edit").click();
       await page.getByTestId("tab-experience").click();
 
-      // The component should auto-clamp if pages reduce
-      // This is a defensive test - if content shrinks, we shouldn't be on an invalid page
+      // Find and click delete buttons to remove experience entries
+      const deleteButtons = page.locator("button[aria-label*='Delete']");
+      const deleteCount = await deleteButtons.count();
+      
+      // Delete up to 3 entries to reduce content
+      for (let i = 0; i < Math.min(3, deleteCount); i++) {
+        if (await deleteButtons.first().isVisible()) {
+          await deleteButtons.first().click();
+          await page.waitForTimeout(100);
+        }
+      }
+
+      // Switch to preview tab to check pagination state
+      await page.getByTestId("main-tab-preview").click();
+      
+      // Wait for preview to render
+      await page.locator(".paginated-resume").waitFor({ state: "visible" });
+      
+      // The page indicator should show a valid page (either page 1, or not show "Page 2" if we're back to 1 page)
+      const newPageIndicator = page.getByText(/Page \d+ of \d+/);
+      const stillHasMultiplePages = await newPageIndicator.isVisible({ timeout: 1000 }).catch(() => false);
+      
+      if (stillHasMultiplePages) {
+        // If still multiple pages, current page should be valid (not exceeding total)
+        const text = await newPageIndicator.textContent();
+        const match = text?.match(/Page (\d+) of (\d+)/);
+        if (match) {
+          const current = parseInt(match[1]);
+          const total = parseInt(match[2]);
+          expect(current).toBeLessThanOrEqual(total);
+        }
+      }
+      // If only 1 page now, the indicator won't show, which is correct behavior
     }
   });
 });
@@ -173,13 +206,21 @@ test.describe("Multi-page PDF Export", () => {
     await expect(resumeCard).toBeVisible({ timeout: 10000 });
     await resumeCard.click();
 
-    // Click export button
+    // Wait for preview to be ready
+    await page.locator(".paginated-resume").waitFor({ state: "visible" });
+
+    // Set up to intercept and delay any canvas/image operations to make loading state observable
     const exportButton = page.getByTestId("button-export");
+    
+    // Click export and immediately check for loading state
     await exportButton.click();
 
-    // During export, button should show loading state (disabled or spinner)
-    // The exact behavior depends on implementation
-    // This verifies the export process starts
-    await expect(exportButton).toBeVisible();
+    // During export, button should be disabled (loading state)
+    // The button becomes disabled while isExporting is true
+    await expect(exportButton).toBeDisabled({ timeout: 1000 });
+    
+    // Also check for the Loader2 spinner icon within the button
+    const spinner = exportButton.locator("svg.animate-spin");
+    await expect(spinner).toBeVisible({ timeout: 1000 });
   });
 });

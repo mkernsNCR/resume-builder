@@ -129,8 +129,8 @@ function extractTitle(text: string): string {
     'architect', 'director', 'lead', 'senior', 'specialist', 'consultant', 'tester', 'intern'];
   
   // Only look in the header area (before major sections)
-  // Use broader set of section markers
-  const headerMatch = text.match(/^([\s\S]*?)(?=EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE|PROJECTS|EDUCATION|SKILLS|TECH STACK|SUMMARY|PROFILE)/i);
+  // Use multiline-aware lookahead to match section markers at start of line
+  const headerMatch = text.match(/^([\s\S]*?)(?=^\s*(?:EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE|PROJECTS|EDUCATION|SKILLS|TECH STACK|SUMMARY|PROFILE)\b)/im);
   
   // Fall back to first 10 lines if no section marker found
   let headerText: string;
@@ -171,7 +171,8 @@ function extractTitle(text: string): string {
 
 function extractSummary(text: string): string {
   // Try to find a labeled summary/profile section first
-  const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE|ABOUT)\s*\n?\s*([\s\S]*?)(?=\n\s*(?:TECH STACK|EXPERIENCE|EDUCATION|SKILLS)\b)/i);
+  // Allow end-of-string as an alternative to following section
+  const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE|ABOUT)\s*\n?\s*([\s\S]*?)(?=\n\s*(?:TECH STACK|EXPERIENCE|EDUCATION|SKILLS)\b|$)/i);
   if (summaryMatch) {
     // Extract summary content, removing contact info lines
     let content = summaryMatch[1];
@@ -240,8 +241,8 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
   const experiences: Array<{ id: string; company: string; position: string; startDate: string; endDate: string; highlights: string[] }> = [];
   
   // Find experience section
-  // Use \n before section headers to avoid matching words like "Engineering Education" mid-text
-  const expMatch = text.match(/EXPERIENCE\s+([\s\S]*?)(?=\n\s*EDUCATION\s*\n|\n\s*SKILLS\s*\n|\n\s*PROJECTS\s*\n|\n\s*CERTIFICATIONS\s*\n|$)/i);
+  // Anchor EXPERIENCE header to start of line to avoid matching mid-paragraph
+  const expMatch = text.match(/^\s*EXPERIENCE\s+([\s\S]*?)(?=^\s*(?:EDUCATION|SKILLS|PROJECTS|CERTIFICATIONS)\s*$|$)/im);
   if (!expMatch) return experiences;
   
   // Clean up the experience text - remove page break artifacts like "PROFILE" headers mid-section
