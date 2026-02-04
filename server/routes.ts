@@ -51,15 +51,24 @@ const updateResumeSchema = z.object({
 
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
+  let parser: any = null;
   try {
-    // Use pdf-parse v1 - simple and reliable for Node.js
-    const pdfParse = require("pdf-parse");
+    // pdf-parse v2+ uses a class-based API that returns { pages: [{ text, num }] }
+    const { PDFParse } = require("pdf-parse");
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer);
-    return data.text.trim();
+    parser = new PDFParse({ data: dataBuffer });
+    await parser.load();
+    const result = await parser.getText();
+    // Join all page texts together
+    const text = result.pages?.map((p: { text: string }) => p.text).join('\n') || '';
+    return text.trim();
   } catch (error) {
     console.error("PDF extraction error:", error);
     return "";
+  } finally {
+    if (parser) {
+      await parser.destroy();
+    }
   }
 }
 
