@@ -3,6 +3,11 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * Ensures a GitHub repository named "resume-builder" exists for the authenticated user, configures a "github" git remote, and force-pushes the current HEAD to the repository's main branch using a push token obtained from the Replit connector.
+ *
+ * Uses an authenticated GitHub client to check for and create the repo if missing, replaces any existing "github" remote with the repository URL, and performs a force push of `HEAD` to `main` using an access token. On any error the function logs the error and exits the process with code 1.
+ */
 async function pushToGitHub() {
   try {
     const octokit = await getUncachableGitHubClient();

@@ -32,6 +32,11 @@ const allowlist = [
   "zod-validation-error",
 ];
 
+/**
+ * Builds the project output into the `dist` directory.
+ *
+ * Deletes any existing `dist`, runs the Vite build for frontend assets, and bundles the server entry (`server/index.ts`) with esbuild into `dist/index.cjs`. Dependencies listed in package.json that are not in the internal allowlist are treated as external; the build sets `process.env.NODE_ENV` to `"production"` and enables minification.
+ */
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
