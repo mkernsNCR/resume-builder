@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, type ReactNode } from "react";
 import type { ResumeContent, ResumeTemplate } from "@shared/schema";
 import { ModernTemplate } from "./modern-template";
 import { ClassicTemplate } from "./classic-template";
@@ -6,9 +6,6 @@ import { MinimalTemplate } from "./minimal-template";
 import { CreativeTemplate } from "./creative-template";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGE_HEIGHT, PAGE_WIDTH, CONTENT_HEIGHT } from "@/lib/page-constants";
-
-// Padding around the resume page container (32px = p-8 in Tailwind)
-const PAGE_PADDING = 32;
 
 // Shared template component registry - used by both PaginatedResume and ResumePreview
 export const TEMPLATE_COMPONENTS = {
@@ -31,25 +28,7 @@ interface PaginatedResumeProps {
 export function PaginatedResume({ content, template, showPageControls = true }: PaginatedResumeProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [scale, setScale] = useState(1);
   const measureRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-
-  // Measure available width and compute scale for mobile
-  const updateScale = useCallback(() => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.offsetWidth;
-      const availableWidth = containerWidth - PAGE_PADDING;
-      // Guard against negative scale when container is too small
-      if (availableWidth <= 0) {
-        setScale(1);
-      } else {
-        const newScale = Math.min(1, availableWidth / PAGE_WIDTH);
-        setScale(newScale);
-      }
-    }
-  }, []);
 
   // Measure content to determine total pages and clamp currentPage
   useEffect(() => {
@@ -61,24 +40,6 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
       setCurrentPage(prev => Math.min(prev, pages));
     }
   }, [content, template]);
-
-  // Update scale on mount and resize using ResizeObserver (more efficient than resize event)
-  useEffect(() => {
-    updateScale();
-    
-    if (containerRef.current) {
-      resizeObserverRef.current = new ResizeObserver(() => {
-        updateScale();
-      });
-      resizeObserverRef.current.observe(containerRef.current);
-    }
-
-    return () => {
-      if (resizeObserverRef.current) {
-        resizeObserverRef.current.disconnect();
-      }
-    };
-  }, [updateScale]);
 
   const TemplateComponent = getTemplateComponent(template);
 
@@ -94,7 +55,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
             aria-label="Previous page"
           >
-            <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
           <span className="text-xs sm:text-sm text-gray-600 px-2">
             <span className="sm:hidden">{currentPage}/{totalPages}</span>
@@ -107,38 +68,31 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
             aria-label="Next page"
           >
-            <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       )}
 
-      {/* Scrollable container for mobile */}
-      <div 
-        ref={containerRef}
-        className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0"
-      >
-        {/* Outer wrapper with scaled layout dimensions */}
+      {/* Visible page with clip - scrollable on mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         <div 
-          className="resume-page-container relative bg-white mx-auto"
+          className="resume-page-container relative bg-white"
           style={{ 
-            width: PAGE_WIDTH * scale,
-            height: PAGE_HEIGHT * scale,
+            width: PAGE_WIDTH,
+            height: PAGE_HEIGHT,
             overflow: 'hidden',
           }}
         >
-          {/* Inner element with actual size and scale transform */}
-          <div
-            ref={measureRef}
-            className="resume-content-scroll"
-            style={{
-              width: PAGE_WIDTH,
-              height: PAGE_HEIGHT,
-              transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px) scale(${scale})`,
-              transformOrigin: 'top left',
-            }}
-          >
-            <TemplateComponent content={content} allowOverflow />
-          </div>
+        <div
+          ref={measureRef}
+          className="resume-content-scroll"
+          style={{
+            transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
+            transition: 'transform 0.2s ease-out',
+          }}
+        >
+          <TemplateComponent content={content} allowOverflow />
+        </div>
         </div>
       </div>
     </div>
@@ -148,15 +102,13 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
 // For PDF export - renders all pages
 export function PaginatedResumeForPrint({ content, template }: Omit<PaginatedResumeProps, 'showPageControls'>) {
   const measureRef = useRef<HTMLDivElement>(null);
-  const [pages, setPages] = useState<number[]>([]);
-  const [isReady, setIsReady] = useState(false);
+  const [pages, setPages] = useState<number[]>([1]);
 
   useEffect(() => {
     if (measureRef.current) {
       const contentHeight = measureRef.current.scrollHeight;
       const numPages = Math.max(1, Math.ceil(contentHeight / CONTENT_HEIGHT));
       setPages(Array.from({ length: numPages }, (_, i) => i + 1));
-      setIsReady(true);
     }
   }, [content, template]);
 
