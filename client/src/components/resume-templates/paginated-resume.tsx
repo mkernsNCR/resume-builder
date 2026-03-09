@@ -7,6 +7,9 @@ import { CreativeTemplate } from "./creative-template";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGE_HEIGHT, PAGE_WIDTH, CONTENT_HEIGHT } from "@/lib/page-constants";
 
+// Padding around the resume page container (32px = p-8 in Tailwind)
+const PAGE_PADDING = 32;
+
 // Shared template component registry - used by both PaginatedResume and ResumePreview
 export const TEMPLATE_COMPONENTS = {
   modern: ModernTemplate,
@@ -37,7 +40,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
   const updateScale = useCallback(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth;
-      const newScale = Math.min(1, (containerWidth - 32) / PAGE_WIDTH); // 32px for padding
+      const newScale = Math.min(1, (containerWidth - PAGE_PADDING) / PAGE_WIDTH);
       setScale(newScale);
     }
   }, []);
