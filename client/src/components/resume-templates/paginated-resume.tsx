@@ -133,7 +133,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             style={{
               width: PAGE_WIDTH,
               height: PAGE_HEIGHT,
-              transform: `scale(${scale})`,
+              transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px) scale(${scale})`,
               transformOrigin: 'top left',
             }}
           >
