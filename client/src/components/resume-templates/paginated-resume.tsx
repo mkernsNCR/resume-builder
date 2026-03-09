@@ -117,26 +117,24 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
         ref={containerRef}
         className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0"
       >
-        {/* Visible page with clip - scales on mobile */}
+        {/* Outer wrapper with scaled layout dimensions */}
         <div 
           className="resume-page-container relative bg-white mx-auto"
           style={{ 
-            width: PAGE_WIDTH,
-            height: PAGE_HEIGHT,
+            width: PAGE_WIDTH * scale,
+            height: PAGE_HEIGHT * scale,
             overflow: 'hidden',
-            transform: `scale(${scale})`,
-            // Anchor to left on mobile to prevent horizontal scroll, center on desktop
-            transformOrigin: scale < 1 ? 'top left' : 'top center',
-            // Negative margin on mobile to collapse extra space from scaling
-            marginBottom: scale < 1 ? `-${PAGE_HEIGHT * (1 - scale)}px` : 0,
           }}
         >
+          {/* Inner element with actual size and scale transform */}
           <div
             ref={measureRef}
             className="resume-content-scroll"
             style={{
-              transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
-              transition: 'transform 0.2s ease-out',
+              width: PAGE_WIDTH,
+              height: PAGE_HEIGHT,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
             }}
           >
             <TemplateComponent content={content} allowOverflow />
@@ -150,13 +148,15 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
 // For PDF export - renders all pages
 export function PaginatedResumeForPrint({ content, template }: Omit<PaginatedResumeProps, 'showPageControls'>) {
   const measureRef = useRef<HTMLDivElement>(null);
-  const [pages, setPages] = useState<number[]>([1]);
+  const [pages, setPages] = useState<number[]>([]);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (measureRef.current) {
       const contentHeight = measureRef.current.scrollHeight;
       const numPages = Math.max(1, Math.ceil(contentHeight / CONTENT_HEIGHT));
       setPages(Array.from({ length: numPages }, (_, i) => i + 1));
+      setIsReady(true);
     }
   }, [content, template]);
 
