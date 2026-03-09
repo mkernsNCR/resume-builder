@@ -91,7 +91,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             type="button"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto flex items-center justify-center"
+            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
             aria-label="Previous page"
           >
             <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5" />
@@ -104,7 +104,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             type="button"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto flex items-center justify-center"
+            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
             aria-label="Next page"
           >
             <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5" />
@@ -127,7 +127,8 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             transform: `scale(${scale})`,
             // Anchor to left on mobile to prevent horizontal scroll, center on desktop
             transformOrigin: scale < 1 ? 'top left' : 'top center',
-            marginBottom: scale < 1 ? `${PAGE_HEIGHT * (1 - scale)}px` : 0,
+            // Negative margin on mobile to collapse extra space from scaling
+            marginBottom: scale < 1 ? `-${PAGE_HEIGHT * (1 - scale)}px` : 0,
           }}
         >
           <div
