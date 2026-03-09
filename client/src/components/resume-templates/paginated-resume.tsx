@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, type ReactNode } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import type { ResumeContent, ResumeTemplate } from "@shared/schema";
 import { ModernTemplate } from "./modern-template";
 import { ClassicTemplate } from "./classic-template";
@@ -28,7 +28,18 @@ interface PaginatedResumeProps {
 export function PaginatedResume({ content, template, showPageControls = true }: PaginatedResumeProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [scale, setScale] = useState(1);
   const measureRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Measure available width and compute scale for mobile
+  const updateScale = useCallback(() => {
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.offsetWidth;
+      const newScale = Math.min(1, (containerWidth - 32) / PAGE_WIDTH); // 32px for padding
+      setScale(newScale);
+    }
+  }, []);
 
   // Measure content to determine total pages and clamp currentPage
   useEffect(() => {
@@ -41,55 +52,73 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
     }
   }, [content, template]);
 
+  // Update scale on mount and resize
+  useEffect(() => {
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [updateScale]);
+
   const TemplateComponent = getTemplateComponent(template);
 
   return (
     <div className="paginated-resume">
-      {/* Page navigation */}
+      {/* Page navigation - touch-friendly on mobile */}
       {showPageControls && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
           <button
             type="button"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto flex items-center justify-center"
+            aria-label="Previous page"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-5 h-5 sm:w-5 sm:h-5" />
           </button>
-          <span className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
+          <span className="text-xs sm:text-sm text-gray-600 px-2">
+            <span className="sm:hidden">{currentPage}/{totalPages}</span>
+            <span className="hidden sm:inline">Page {currentPage} of {totalPages}</span>
           </span>
           <button
             type="button"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto flex items-center justify-center"
+            aria-label="Next page"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-5 h-5 sm:w-5 sm:h-5" />
           </button>
         </div>
       )}
 
-      {/* Visible page with clip */}
+      {/* Scrollable container for mobile */}
       <div 
-        className="resume-page-container relative bg-white"
-        style={{ 
-          width: PAGE_WIDTH,
-          height: PAGE_HEIGHT,
-          overflow: 'hidden',
-        }}
+        ref={containerRef}
+        className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0"
       >
-        <div
-          ref={measureRef}
-          className="resume-content-scroll"
-          style={{
-            transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
-            transition: 'transform 0.2s ease-out',
+        {/* Visible page with clip - scales on mobile */}
+        <div 
+          className="resume-page-container relative bg-white mx-auto"
+          style={{ 
+            width: PAGE_WIDTH,
+            height: PAGE_HEIGHT,
+            overflow: 'hidden',
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+            marginBottom: scale < 1 ? `${PAGE_HEIGHT * (1 - scale)}px` : 0,
           }}
         >
-          <TemplateComponent content={content} allowOverflow />
+          <div
+            ref={measureRef}
+            className="resume-content-scroll"
+            style={{
+              transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
+              transition: 'transform 0.2s ease-out',
+            }}
+          >
+            <TemplateComponent content={content} allowOverflow />
+          </div>
         </div>
-        
       </div>
     </div>
   );
