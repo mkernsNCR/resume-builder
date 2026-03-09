@@ -8,4 +8,4 @@ vite.config.ts.*
 # Playwright
 playwright-report/
 test-results/
-.playwright/
+.playwright/.env

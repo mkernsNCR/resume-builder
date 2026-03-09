@@ -31,6 +31,7 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
   const [scale, setScale] = useState(1);
   const measureRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Measure available width and compute scale for mobile
   const updateScale = useCallback(() => {
@@ -52,11 +53,22 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
     }
   }, [content, template]);
 
-  // Update scale on mount and resize
+  // Update scale on mount and resize using ResizeObserver (more efficient than resize event)
   useEffect(() => {
     updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+    
+    if (containerRef.current) {
+      resizeObserverRef.current = new ResizeObserver(() => {
+        updateScale();
+      });
+      resizeObserverRef.current.observe(containerRef.current);
+    }
+
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+    };
   }, [updateScale]);
 
   const TemplateComponent = getTemplateComponent(template);
