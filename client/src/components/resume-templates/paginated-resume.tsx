@@ -40,8 +40,14 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
   const updateScale = useCallback(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth;
-      const newScale = Math.min(1, (containerWidth - PAGE_PADDING) / PAGE_WIDTH);
-      setScale(newScale);
+      const availableWidth = containerWidth - PAGE_PADDING;
+      // Guard against negative scale when container is too small
+      if (availableWidth <= 0) {
+        setScale(1);
+      } else {
+        const newScale = Math.min(1, availableWidth / PAGE_WIDTH);
+        setScale(newScale);
+      }
     }
   }, []);
 
@@ -119,7 +125,8 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             height: PAGE_HEIGHT,
             overflow: 'hidden',
             transform: `scale(${scale})`,
-            transformOrigin: 'top center',
+            // Anchor to left on mobile to prevent horizontal scroll, center on desktop
+            transformOrigin: scale < 1 ? 'top left' : 'top center',
             marginBottom: scale < 1 ? `${PAGE_HEIGHT * (1 - scale)}px` : 0,
           }}
         >
