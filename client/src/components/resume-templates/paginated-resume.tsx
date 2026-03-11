@@ -73,8 +73,12 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
         </div>
       )}
 
-      {/* Visible page with clip - scrollable on mobile */}
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+      {/* 
+        Visible page with clip - scrollable on mobile.
+        NOTE: Horizontal scrolling requires the parent container to NOT have overflow:hidden or clip transforms.
+        If scrolling doesn't work, ensure the parent (e.g., ScrollArea in home.tsx) allows overflow.
+      */}
+      <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
         <div 
           className="resume-page-container relative bg-white"
           style={{ 
