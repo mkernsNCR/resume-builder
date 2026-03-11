@@ -87,16 +87,16 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
             overflow: 'hidden',
           }}
         >
-        <div
-          ref={measureRef}
-          className="resume-content-scroll"
-          style={{
-            transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
-            transition: 'transform 0.2s ease-out',
-          }}
-        >
-          <TemplateComponent content={content} allowOverflow />
-        </div>
+          <div
+            ref={measureRef}
+            className="resume-content-scroll"
+            style={{
+              transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
+              transition: 'transform 0.2s ease-out',
+            }}
+          >
+            <TemplateComponent content={content} allowOverflow />
+          </div>
         </div>
       </div>
     </div>
