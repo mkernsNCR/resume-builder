@@ -45,51 +45,59 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
 
   return (
     <div className="paginated-resume">
-      {/* Page navigation */}
+      {/* Page navigation - touch-friendly on mobile */}
       {showPageControls && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
           <button
             type="button"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+            aria-label="Previous page"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
+          <span className="text-xs sm:text-sm text-gray-600 px-2">
+            <span className="sm:hidden">{currentPage}/{totalPages}</span>
+            <span className="hidden sm:inline">Page {currentPage} of {totalPages}</span>
           </span>
           <button
             type="button"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
+            className="p-2 sm:p-1 rounded hover:bg-gray-100 disabled:opacity-30 touch-manipulation min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
+            aria-label="Next page"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       )}
 
-      {/* Visible page with clip */}
-      <div 
-        className="resume-page-container relative bg-white"
-        style={{ 
-          width: PAGE_WIDTH,
-          height: PAGE_HEIGHT,
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          ref={measureRef}
-          className="resume-content-scroll"
-          style={{
-            transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
-            transition: 'transform 0.2s ease-out',
+      {/* 
+        Visible page with clip - scrollable on mobile.
+        NOTE: Horizontal scrolling requires the parent container to NOT have overflow:hidden or clip transforms.
+        If scrolling doesn't work, ensure the parent (e.g., ScrollArea in home.tsx) allows overflow.
+      */}
+      <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+        <div 
+          className="resume-page-container relative bg-white"
+          style={{ 
+            width: PAGE_WIDTH,
+            height: PAGE_HEIGHT,
+            overflow: 'hidden',
           }}
         >
-          <TemplateComponent content={content} allowOverflow />
+          <div
+            ref={measureRef}
+            className="resume-content-scroll"
+            style={{
+              transform: `translateY(-${(currentPage - 1) * CONTENT_HEIGHT}px)`,
+              transition: 'transform 0.2s ease-out',
+            }}
+          >
+            <TemplateComponent content={content} allowOverflow />
+          </div>
         </div>
-        
       </div>
     </div>
   );
