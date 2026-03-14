@@ -118,8 +118,7 @@ Company ABC  Jan 2020 - Present`;
       expect(result.summary).toContain('Forward-thinking developer');
     });
 
-    // TODO(#1): Support SUMMARY section appearing after EXPERIENCE
-    it.skip('should extract summary at end of document (SEE ISSUE #1)', () => {
+    it('should extract summary at end of document', () => {
       const text = `John Doe
 john@email.com
 
@@ -249,8 +248,7 @@ React, TypeScript, JavaScript, Node.js, PostgreSQL`;
       expect(result.skills?.length).toBeGreaterThan(0);
     });
 
-    // TODO(#2): Support TECH STACK as skills section header when appearing before EXPERIENCE
-    it.skip('should extract skills from TECH STACK section (SEE ISSUE #2)', () => {
+    it('should extract skills from TECH STACK section', () => {
       const text = `John Doe
 
 TECH STACK
