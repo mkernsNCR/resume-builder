@@ -44,52 +44,52 @@ function cleanExtractedText(text: string): string {
  */
 const SECTION_PATTERNS: Record<string, RegExp[]> = {
   experience: [
-    /^(?:WORK\s+)?EXPERIENCE/i,
-    /^PROFESSIONAL\s+EXPERIENCE/i,
-    /^EMPLOYMENT(?:\s+HISTORY)?/i,
-    /^WORK\s+HISTORY/i,
-    /^CAREER\s+HISTORY/i,
-    /^RELEVANT\s+EXPERIENCE/i,
+    /^(?:WORK\s+)?EXPERIENCE\b/i,
+    /^PROFESSIONAL\s+EXPERIENCE\b/i,
+    /^EMPLOYMENT(?:\s+HISTORY)?\b/i,
+    /^WORK\s+HISTORY\b/i,
+    /^CAREER\s+HISTORY\b/i,
+    /^RELEVANT\s+EXPERIENCE\b/i,
   ],
   education: [
-    /^EDUCATION(?:AL\s+BACKGROUND)?/i,
-    /^ACADEMIC(?:\s+BACKGROUND)?/i,
-    /^QUALIFICATIONS/i,
-    /^DEGREES?/i,
+    /^EDUCATION(?:AL\s+BACKGROUND)?\b/i,
+    /^ACADEMIC(?:\s+BACKGROUND)?\b/i,
+    /^QUALIFICATIONS\b/i,
+    /^DEGREES?\b/i,
   ],
   skills: [
-    /^(?:TECHNICAL\s+)?SKILLS/i,
-    /^TECH(?:NICAL)?\s+STACK/i,
-    /^TECHNOLOGIES/i,
-    /^TOOLS(?:\s+(?:AND|&)\s+TECHNOLOGIES)?/i,
-    /^COMPETENC(?:IES|E)/i,
-    /^CORE\s+COMPETENCIES/i,
-    /^PROFICIENCIES/i,
-    /^AREAS?\s+OF\s+EXPERTISE/i,
+    /^(?:TECHNICAL\s+)?SKILLS\b/i,
+    /^TECH(?:NICAL)?\s+STACK\b/i,
+    /^TECHNOLOGIES\b/i,
+    /^TOOLS(?:\s+(?:AND|&)\s+TECHNOLOGIES)?\b/i,
+    /^COMPETENC(?:IES|E)\b/i,
+    /^CORE\s+COMPETENCIES\b/i,
+    /^PROFICIENCIES\b/i,
+    /^AREAS?\s+OF\s+EXPERTISE\b/i,
   ],
   projects: [
-    /^(?:PERSONAL\s+|SELECTED\s+|KEY\s+)?PROJECTS/i,
-    /^PORTFOLIO/i,
+    /^(?:PERSONAL\s+|SELECTED\s+|KEY\s+)?PROJECTS\b/i,
+    /^PORTFOLIO\b/i,
   ],
   summary: [
-    /^(?:PROFESSIONAL\s+)?SUMMARY/i,
-    /^(?:CAREER\s+)?OBJECTIVE/i,
-    /^PROFILE/i,
-    /^ABOUT(?:\s+ME)?/i,
-    /^OVERVIEW/i,
+    /^(?:PROFESSIONAL\s+)?SUMMARY\b/i,
+    /^(?:CAREER\s+)?OBJECTIVE\b/i,
+    /^PROFILE\b/i,
+    /^ABOUT(?:\s+ME)?\b/i,
+    /^OVERVIEW\b/i,
   ],
   certifications: [
-    /^CERTIFICATIONS?/i,
-    /^LICENSES?(?:\s+(?:AND|&)\s+CERTIFICATIONS?)?/i,
+    /^CERTIFICATIONS?\b/i,
+    /^LICENSES?(?:\s+(?:AND|&)\s+CERTIFICATIONS?)?\b/i,
   ],
   awards: [
-    /^AWARDS?(?:\s+(?:AND|&)\s+HONORS?)?/i,
-    /^HONORS?(?:\s+(?:AND|&)\s+AWARDS?)?/i,
-    /^ACHIEVEMENTS?/i,
+    /^AWARDS?(?:\s+(?:AND|&)\s+HONORS?)?\b/i,
+    /^HONORS?(?:\s+(?:AND|&)\s+AWARDS?)?\b/i,
+    /^ACHIEVEMENTS?\b/i,
   ],
   volunteer: [
-    /^VOLUNTEER(?:ING)?\s*(?:EXPERIENCE)?/i,
-    /^COMMUNITY\s+(?:SERVICE|INVOLVEMENT)/i,
+    /^VOLUNTEER(?:ING)?\s*(?:EXPERIENCE\b)?/i,
+    /^COMMUNITY\s+(?:SERVICE|INVOLVEMENT)\b/i,
   ],
 };
 
@@ -136,15 +136,17 @@ function getSectionText(text: string, sectionType: string, sections: Array<{ typ
   const sectionEntries = sections.filter(s => s.type === sectionType);
   if (sectionEntries.length === 0) return "";
 
-  // Use the first matching section
-  const section = sectionEntries[0];
-  const sectionIdx = sections.indexOf(section);
+  // Collect text from all matching sections (e.g., multiple "EXPERIENCE" headers)
+  const parts: string[] = [];
+  for (const entry of sectionEntries) {
+    const sectionIdx = sections.indexOf(entry);
+    const nextSection = sections[sectionIdx + 1];
+    const endIdx = nextSection ? nextSection.start : text.length;
+    const part = text.substring(entry.contentStart, endIdx).trim();
+    if (part) parts.push(part);
+  }
 
-  // Find the next section to determine the end boundary
-  const nextSection = sections[sectionIdx + 1];
-  const endIdx = nextSection ? nextSection.start : text.length;
-
-  return text.substring(section.contentStart, endIdx).trim();
+  return parts.join('\n');
 }
 
 /**
@@ -231,9 +233,18 @@ function extractContact(text: string) {
   const emailDomains = ['gmail', 'yahoo', 'hotmail', 'outlook', 'ymail', 'aol', 'icloud'];
   const techTerms = ['node.js', 'react.js', 'vue.js', 'next.js', 'express.js', 'd3.js', 'three.js'];
   const workDomains = ['va.gov', 'nasa.gov', 'usda.gov', 'dhs.gov', 'dod.gov', 'army.mil', 'navy.mil'];
+  // Collect all email domains present in the text so we can exclude them from website matches
+  const emailsInText = text.match(/[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g) || [];
+  const emailDomainSet = new Set(emailsInText.map(e => e.split('@')[1].toLowerCase()));
   const urlMatches = text.match(/(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi) || [];
   const website = urlMatches.find(u => {
     const lower = u.toLowerCase();
+    // Exclude if this match is preceded by '@' in the original text (i.e., it's an email domain)
+    const matchIdx = text.toLowerCase().indexOf(lower);
+    if (matchIdx > 0 && text[matchIdx - 1] === '@') return false;
+    // Exclude if this domain appears as part of any email address in the text
+    const domainOnly = lower.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+    if (emailDomainSet.has(domainOnly)) return false;
     return !lower.includes('linkedin') && !lower.includes('github') &&
            !emailDomains.some(d => lower.includes(d + '.')) &&
            !techTerms.some(t => lower.includes(t) || lower.includes(t.replace(/\./g, ''))) &&
@@ -664,9 +675,43 @@ function extractEducation(eduText: string): Array<{ id: string; institution: str
       }
       cleanInstitution = cleanInstitution.replace(/\s*[-–—,]\s*$/, '').trim();
 
+      // If the line also contains a degree (e.g., "University of Florida, Bachelor of Science in CS"),
+      // extract the degree portion and remove it from the institution string.
+      let inlineDegree = '';
+      let inlineField = '';
+      if (lineIsDegree) {
+        const { degree, field } = extractField(cleanInstitution);
+        // Try to split institution from degree using common separators
+        const sepMatch = cleanInstitution.match(/^(.+?)\s*[,\-–—]\s*(.+)$/);
+        if (sepMatch) {
+          const part1Lower = sepMatch[1].toLowerCase();
+          const part2Lower = sepMatch[2].toLowerCase();
+          const part1HasInst = institutionKeywords.some(kw => part1Lower.includes(kw));
+          const part2HasDeg = degreeKeywords.some(kw => part2Lower.includes(kw));
+          if (part1HasInst && part2HasDeg) {
+            cleanInstitution = sepMatch[1].trim();
+            const extracted = extractField(sepMatch[2].trim());
+            inlineDegree = extracted.degree;
+            inlineField = extracted.field;
+          } else {
+            // Degree keywords are in the full string but we can't cleanly split;
+            // use extractField on the whole string and keep institution as-is
+            inlineDegree = degree;
+            inlineField = field;
+          }
+        } else {
+          inlineDegree = degree;
+          inlineField = field;
+        }
+      }
+
       if (currentEntry && !currentEntry.institution) {
         // Fill in missing institution for a degree-first entry
         currentEntry.institution = cleanInstitution;
+        if (inlineDegree && !currentEntry.degree) {
+          currentEntry.degree = inlineDegree;
+          if (inlineField) currentEntry.field = inlineField;
+        }
         if (dateRanges.length > 0) {
           currentEntry.startDate = dateRanges[0].startDate;
           currentEntry.endDate = dateRanges[0].endDate;
@@ -683,8 +728,8 @@ function extractEducation(eduText: string): Array<{ id: string; institution: str
         }
         currentEntry = {
           institution: cleanInstitution,
-          degree: '',
-          field: '',
+          degree: inlineDegree,
+          field: inlineField,
           startDate: dateRanges.length > 0 ? dateRanges[0].startDate : (yearMatch?.[0] || ''),
           endDate: dateRanges.length > 0 ? dateRanges[0].endDate : undefined,
         };
