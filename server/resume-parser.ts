@@ -348,14 +348,17 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
   while ((bulletMatch = bulletPattern.exec(expText)) !== null) {
     let bulletText = bulletMatch[1].trim();
 
-    // Clean bullet text: remove any trailing company/date that got merged in
-    // Pattern: company name followed by date at end of bullet
-    const trailingJobPattern = /\s+[A-Z][a-zA-Z\s&]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\d\-–—]+(?:Present|Current|\d{4}).*$/i;
-    bulletText = bulletText.replace(trailingJobPattern, '').trim();
+    // Truncate at blank line (double newline) - bullet content never spans across job entries
+    const blankLineIdx = bulletText.search(/\n\s*\n/);
+    if (blankLineIdx > 0) {
+      bulletText = bulletText.substring(0, blankLineIdx).trim();
+    }
 
-    // Also remove trailing company names without dates (next job header)
-    // Look for pattern like "Company Name\nTitle" at end
-    bulletText = bulletText.replace(/\s+[A-Z][a-zA-Z\s&]{5,}\s*$/m, '').trim();
+    // Also truncate at a line that looks like a job header (line with a date range)
+    const jobHeaderIdx = bulletText.search(/\n.*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\s*[-–—]/i);
+    if (jobHeaderIdx > 0) {
+      bulletText = bulletText.substring(0, jobHeaderIdx).trim();
+    }
 
     bullets.push({ text: bulletText, index: bulletMatch.index });
   }
