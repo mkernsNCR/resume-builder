@@ -280,10 +280,13 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
     }
   }
   
+  // Track which dateMatch index maps to each experience (they can differ if some are filtered out)
+  const experienceDateIndices: number[] = [];
+
   // Extract job info around each date
   for (let i = 0; i < dateMatches.length && experiences.length < 10; i++) {
     const { start, end, index, fullMatch } = dateMatches[i];
-    
+
     // Get text before this date (company name)
     // Look backwards from the date to find company name
     let searchStart = 0;
@@ -306,7 +309,7 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
         }
       }
     }
-    
+
     const beforeDate = expText.substring(searchStart, index);
     // Company: look for capitalized words/phrases on last line before date
     const lines = beforeDate.trim().split('\n');
@@ -315,7 +318,7 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
     let company = lastLine.replace(/[•\-–—]/g, '').trim();
     // Remove any trailing date fragments
     company = company.replace(/\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*$/i, '').trim();
-    
+
     // Get text after date (position/title)
     const afterDateStart = index + fullMatch.length;
     const afterDate = expText.substring(afterDateStart);
@@ -324,8 +327,9 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
     let position = positionMatch ? positionMatch[1].trim() : "";
     // Clean up position - fix hyphenated titles
     position = position.replace(/\s+-/g, '-').replace(/-\s+/g, '-');
-    
+
     if (company && company.length > 2 && !/^(experience|education|skills)/i.test(company)) {
+      experienceDateIndices.push(i);
       experiences.push({
         id: `exp-${experiences.length + 1}`,
         company,
@@ -336,34 +340,37 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
       });
     }
   }
-  
+
   // Extract bullet points and distribute to experiences based on position in text
   const bulletPattern = /•\s*([^•]+)/g;
   const bullets: { text: string; index: number }[] = [];
   let bulletMatch;
   while ((bulletMatch = bulletPattern.exec(expText)) !== null) {
     let bulletText = bulletMatch[1].trim();
-    
+
     // Clean bullet text: remove any trailing company/date that got merged in
     // Pattern: company name followed by date at end of bullet
     const trailingJobPattern = /\s+[A-Z][a-zA-Z\s&]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\d\-–—]+(?:Present|Current|\d{4}).*$/i;
     bulletText = bulletText.replace(trailingJobPattern, '').trim();
-    
+
     // Also remove trailing company names without dates (next job header)
     // Look for pattern like "Company Name\nTitle" at end
     bulletText = bulletText.replace(/\s+[A-Z][a-zA-Z\s&]{5,}\s*$/m, '').trim();
-    
+
     bullets.push({ text: bulletText, index: bulletMatch.index });
   }
-  
+
   for (let i = 0; i < experiences.length; i++) {
-    const currentDateIdx = dateMatches[i]?.index ?? 0;
-    const nextDateIdx = dateMatches[i + 1]?.index ?? expText.length;
-    
+    // Use the correct dateMatch index for this experience
+    const dateIdx = experienceDateIndices[i];
+    const currentDateIdx = dateMatches[dateIdx]?.index ?? 0;
+    // Look ahead to the next dateMatch (not next experience) for the boundary
+    const nextDateMatchIdx = dateIdx + 1 < dateMatches.length ? dateMatches[dateIdx + 1].index : expText.length;
+
     // Find bullets between this job's date and the next job's date
     for (const bullet of bullets) {
-      const inRange = bullet.index > currentDateIdx && bullet.index < nextDateIdx;
-      if (inRange && experiences[i].highlights.length < 5) {
+      const inRange = bullet.index > currentDateIdx && bullet.index < nextDateMatchIdx;
+      if (inRange && experiences[i].highlights.length < 8) {
         // Skip if bullet contains next job's info
         const hasNextJobInfo = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s*[-–—]/i.test(bullet.text);
         // Minimum length of 10 chars to filter noise
