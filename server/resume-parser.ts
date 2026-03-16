@@ -88,7 +88,7 @@ const SECTION_PATTERNS: Record<string, RegExp[]> = {
     /^ACHIEVEMENTS?\b/i,
   ],
   volunteer: [
-    /^VOLUNTEER(?:ING)?\s*(?:EXPERIENCE\b)?/i,
+    /^VOLUNTEER(?:ING)?\b\s*(?:EXPERIENCE\b)?/i,
     /^COMMUNITY\s+(?:SERVICE|INVOLVEMENT)\b/i,
   ],
 };
@@ -373,7 +373,7 @@ function extractSkills(text: string, hasDedicatedSection: boolean): Array<{ id: 
   // Parse skills separated by bullets, commas, pipes, semicolons, or newlines
   const noiseWords = new Set(['and', 'or', 'the', 'a', 'an', 'in', 'of', 'for', 'to', 'with', 'etc', 'including']);
   const rawSkills = cleanedText
-    .split(/[•●○◦▪▸►\-\*,|;\/]\s*|\n/)
+    .split(/[•●○◦▪▸►\-\*,|;]\s*|\n/)
     .map(s => s.trim())
     .filter(s => s.length > 1 && s.length < 40 && !/^\d+$/.test(s))
     .filter(s => !noiseWords.has(s.toLowerCase()));
@@ -816,7 +816,7 @@ function extractEducation(eduText: string): Array<{ id: string; institution: str
       education.push({
         id: 'edu-1',
         institution: instLine || 'Unknown',
-        degree: degree || instLine || 'Unknown',
+        degree: degree ? degree : 'Unknown',
         field,
         startDate: date,
       });
