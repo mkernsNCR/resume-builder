@@ -265,7 +265,7 @@ function extractName(headerText: string): string {
     if (/,\s*[A-Z]{2}\b/.test(line)) continue; // Skip locations
 
     // Match "FirstName LastName" pattern (including middle names/initials)
-    const nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z]\.?)?\s+[A-Z][a-z]+)(?:\s|,|$)/);
+    const nameMatch = line.match(/^([A-Z][a-zA-Z]*(?:[-'][A-Za-z]+)*(?:\s+[A-Z]\.?)?\s+[A-Z][a-zA-Z]*(?:[-'][A-Za-z]+)*)(?:\s|,|$)/);
     if (nameMatch) return nameMatch[1];
 
     // Also try ALL CAPS name: "JOHN DOE"
@@ -328,11 +328,11 @@ function extractTitle(headerText: string): string {
  */
 function cleanSummary(summaryText: string): string {
   let content = summaryText;
-  // Remove contact info lines
-  content = content.replace(/.*@.*\.(com|org|net|edu).*\n?/gi, '');
-  content = content.replace(/.*\d{3}[-.\s]?\d{3}[-.\s]?\d{4}.*\n?/g, '');
-  content = content.replace(/.*https?:\/\/.*\n?/gi, '');
-  content = content.replace(/.*linkedin\.com.*\n?/gi, '');
+  // Remove contact info substrings (not entire lines)
+  content = content.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.(com|org|net|edu)\b/gi, '');
+  content = content.replace(/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '');
+  content = content.replace(/https?:\/\/[^\s]+/gi, '');
+  content = content.replace(/\b\S*linkedin\.com\S*/gi, '');
 
   const cleanText = content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
   return cleanText.length > 30 ? cleanText.slice(0, 500) : "";
@@ -378,7 +378,7 @@ function extractSkills(text: string, hasDedicatedSection: boolean): Array<{ id: 
   // Parse skills separated by bullets, commas, pipes, semicolons, or newlines
   const noiseWords = new Set(['and', 'or', 'the', 'a', 'an', 'in', 'of', 'for', 'to', 'with', 'etc', 'including']);
   const rawSkills = cleanedText
-    .split(/[•●○◦▪▸►\-\*,|;]\s*|\n/)
+    .split(/[•●○◦▪▸►\*,|;]\s*|\n/)
     .map(s => s.trim())
     .filter(s => s.length > 1 && s.length < 40 && !/^\d+$/.test(s))
     .filter(s => !noiseWords.has(s.toLowerCase()));
@@ -541,7 +541,7 @@ function extractExperience(expText: string): Array<{ id: string; company: string
     const beforeDate = cleanedText.substring(searchStart, dateIndex);
     const lines = beforeDate.trim().split('\n');
     const lastLine = lines[lines.length - 1] || '';
-    let company = lastLine.replace(/[•●○◦▪▸►→\-–—]/g, '').trim();
+    let company = lastLine.replace(/^[•●○◦▪▸►→\-–—\s]+/, '').replace(/[•●○◦▪▸►→]/g, '').trim();
     company = company.replace(/\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*$/i, '').trim();
 
     // Get text after date (position/title)
