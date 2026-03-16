@@ -120,7 +120,7 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                   <div className="space-y-2">
                     <Label>Project Name *</Label>
                     <Input
-                      value={project.name}
+                      value={project.name || ""}
                       onChange={(e) =>
                         updateProject(project.id, { name: e.target.value })
                       }
@@ -131,7 +131,7 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                   <div className="space-y-2">
                     <Label>URL</Label>
                     <Input
-                      value={project.url}
+                      value={project.url || ""}
                       onChange={(e) =>
                         updateProject(project.id, { url: e.target.value })
                       }
@@ -144,7 +144,7 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                 <div className="space-y-2 mb-4">
                   <Label>Description</Label>
                   <Textarea
-                    value={project.description}
+                    value={project.description || ""}
                     onChange={(e) =>
                       updateProject(project.id, { description: e.target.value })
                     }
