@@ -198,10 +198,10 @@ export function parseResumeText(rawText: string): Partial<ResumeContent> {
   result.skills = extractSkills(skillsText || text, !!skillsText);
 
   const experienceText = getSectionText(text, 'experience', sections);
-  result.experience = extractExperience(experienceText);
+  result.experience = extractExperience(experienceText || headerArea || text);
 
   const educationText = getSectionText(text, 'education', sections);
-  result.education = extractEducation(educationText);
+  result.education = extractEducation(educationText || headerArea || text);
 
   return result;
 }
@@ -225,8 +225,8 @@ function extractContact(text: string) {
   const githubMatch = text.match(/github\.com\/([a-zA-Z0-9-]+)/i);
   if (githubMatch && !contact.website) contact.website = `github.com/${githubMatch[1]}`;
 
-  // Location (City, ST format or City, State format)
-  const locationMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z]{2})\b/);
+  // Location (City, ST format or City, State format including full state names)
+  const locationMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*(?:[A-Z]{2}\b|[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b)/);
   if (locationMatch) contact.location = locationMatch[0];
 
   // Website (exclude email domains, social, tech terms, and work-related domains)
@@ -271,8 +271,13 @@ function extractName(headerText: string): string {
     // Also try ALL CAPS name: "JOHN DOE"
     const capsMatch = line.match(/^([A-Z]{2,}(?:\s+[A-Z]\.?)?\s+[A-Z]{2,})(?:\s|,|$)/);
     if (capsMatch) {
-      // Convert to title case
-      return capsMatch[1].split(/\s+/).map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+      const capsWords = capsMatch[1].split(/\s+/);
+      const roleKeywords = new Set(['ENGINEER', 'DEVELOPER', 'MANAGER', 'DIRECTOR', 'ANALYST', 'CONSULTANT', 'SPECIALIST', 'INTERN', 'CEO', 'CTO']);
+      const looksLikeRole = capsWords.some(w => roleKeywords.has(w)) || capsWords.length > 2;
+      if (!looksLikeRole) {
+        // Convert to title case
+        return capsMatch[1].split(/\s+/).map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+      }
     }
   }
   return "";
@@ -398,8 +403,8 @@ function normalizeDate(dateStr: string): string {
   const trimmed = dateStr.trim();
   if (/present|current|now|ongoing/i.test(trimmed)) return "Present";
 
-  // Already in "Mon YYYY" format
-  if (/^[A-Z][a-z]+\s+\d{4}$/.test(trimmed)) return trimmed;
+  // Already in "Mon YYYY" format (three-letter abbreviation only)
+  if (/^[A-Z][a-z]{2}\s+\d{4}$/.test(trimmed)) return trimmed;
 
   // Full month name: "January 2020"
   const fullMonthMatch = trimmed.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})$/i);
