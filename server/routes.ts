@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { createRequire } from "module";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -8,8 +7,7 @@ import { z } from "zod";
 import { storage, seedDatabase } from "./storage";
 import { insertResumeSchema, resumeContentSchema, type ResumeContent } from "@shared/schema";
 import { parseResumeText } from "./resume-parser";
-
-const require = createRequire(import.meta.url);
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // Configure multer for file uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -49,26 +47,27 @@ const updateResumeSchema = z.object({
   content: resumeContentSchema.optional(),
 });
 
+// Disable worker for server-side usage
+(pdfjsLib as any).GlobalWorkerOptions.workerSrc = "";
+
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
-  let parser: any = null;
   try {
-    // pdf-parse v2+ uses a class-based API that returns { pages: [{ text, num }] }
-    const { PDFParse } = require("pdf-parse");
-    const dataBuffer = fs.readFileSync(filePath);
-    parser = new PDFParse({ data: dataBuffer });
-    await parser.load();
-    const result = await parser.getText();
-    // Join all page texts together
-    const text = result.pages?.map((p: { text: string }) => p.text).join('\n') || '';
-    return text.trim();
+    const dataBuffer = new Uint8Array(fs.readFileSync(filePath));
+    const pdf = await pdfjsLib.getDocument({ data: dataBuffer, useSystemFonts: true }).promise;
+    const textParts: string[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item: any) => item.str)
+        .join(" ");
+      textParts.push(pageText);
+    }
+    return textParts.join("\n").trim();
   } catch (error) {
     console.error("PDF extraction error:", error);
     return "";
-  } finally {
-    if (parser) {
-      await parser.destroy();
-    }
   }
 }
 
