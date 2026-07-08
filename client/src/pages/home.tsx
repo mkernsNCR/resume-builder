@@ -543,34 +543,6 @@ export default function Home() {
     };
   }, [content, template, handleSave]);
 
-  // Keyboard shortcuts for undo/redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-      const target = e.target instanceof HTMLElement ? e.target : null;
-      const isTyping =
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable === true;
-      const isInsideResumeEditor =
-        target?.closest("[data-resume-editor]") != null;
-      if (!isMod || (isTyping && !isInsideResumeEditor)) return;
-
-      const key = e.key.toLowerCase();
-      if (key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        commitPendingHistory();
-        undo();
-      } else if ((key === "z" && e.shiftKey) || key === "y") {
-        e.preventDefault();
-        commitPendingHistory();
-        redo();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [commitPendingHistory, undo, redo]);
-
   // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -804,6 +776,43 @@ export default function Home() {
       setIsExporting(false);
     }
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      if (isMod) {
+        if (e.key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+          e.preventDefault();
+          redo();
+        } else if (e.key === "s") {
+          e.preventDefault();
+          handleSave();
+        } else if (e.key === "e") {
+          e.preventDefault();
+          handleExportPDF();
+        }
+        return;
+      }
+
+      // Tab switching with 1-5 (only when not typing)
+      if (!isTyping && e.key >= "1" && e.key <= "5") {
+        const tabs = ["personal", "experience", "education", "skills", "projects"];
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < tabs.length) {
+          setActiveTab(tabs[idx]);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, handleSave, handleExportPDF]);
 
   const loadResume = (resume: Resume) => {
     const nextContent = resume.content as ResumeContent;
