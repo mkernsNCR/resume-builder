@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Copy,
   Menu,
 } from "lucide-react";
 
@@ -270,6 +271,37 @@ export default function Home() {
     e.stopPropagation(); // Prevent card click
     setDeletingResumeId(resumeId);
     deleteMutation.mutate(resumeId);
+  };
+
+  // Duplicate resume mutation
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/resumes/${id}/duplicate`);
+    },
+    onSuccess: async (response) => {
+      const result = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      loadResume(result);
+      toast({
+        title: "Resume duplicated",
+        description: "A copy has been created successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to duplicate resume. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDuplicateResume = (
+    e: MouseEvent<HTMLButtonElement>,
+    resumeId: string
+  ) => {
+    e.stopPropagation();
+    duplicateMutation.mutate(resumeId);
   };
 
   const handleFileSelect = useCallback((file: File) => {
@@ -680,6 +712,18 @@ export default function Home() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-foreground hover:bg-muted -mr-0.5 transition-all"
+                            onClick={(e) => handleDuplicateResume(e, resume.id)}
+                            disabled={duplicateMutation.isPending}
+                            data-testid={`button-duplicate-resume-mobile-${resume.id}`}
+                            aria-label={`Duplicate ${resume.title || "Untitled Resume"}`}
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 -mr-1 transition-all"
                             onClick={(e) => handleDeleteResume(e, resume.id)}
                             disabled={deletingResumeId === resume.id}
@@ -800,6 +844,18 @@ export default function Home() {
                         Edited {new Date(resume.updatedAt).toLocaleDateString()}
                       </p>
                     </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-foreground hover:bg-muted -mr-0.5 transition-all"
+                      onClick={(e) => handleDuplicateResume(e, resume.id)}
+                      disabled={duplicateMutation.isPending}
+                      data-testid={`button-duplicate-resume-${resume.id}`}
+                      aria-label={`Duplicate ${resume.title || "Untitled Resume"}`}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
 
                     <Button
                       variant="ghost"
