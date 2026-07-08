@@ -13,8 +13,6 @@ import { TemplateSelector } from "@/components/template-selector";
 import { ResumePreview } from "@/components/resume-templates";
 import { PAGE_WIDTH, PAGE_HEIGHT, TOP_MARGIN } from "@/lib/page-constants";
 import type { Resume, ResumeContent, ResumeTemplate } from "@shared/schema";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import {
   FileText,
   Download,
@@ -419,11 +417,16 @@ export default function Home() {
     };
   }, [content, template, handleSave]);
 
-  // Client-side PDF export using html2canvas + jsPDF
+  // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
   const handleExportPDF = async () => {
     setIsExporting(true);
-    
+
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
       // Create a temporary container for full-size rendering
       const tempContainer = document.createElement("div");
       tempContainer.style.position = "absolute";
