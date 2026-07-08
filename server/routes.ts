@@ -13,6 +13,7 @@ import { ApiError } from "./api-error";
 import { scoreResume } from "./resume-scoring";
 import { matchJobDescription } from "./job-matcher";
 import { generateSuggestions } from "./content-suggestions";
+import { generateResumePDF } from "./pdf-generator";
 
 const require = createRequire(import.meta.url);
 
@@ -298,6 +299,22 @@ export async function registerRoutes(
       }
     },
   );
+
+  // Server-side PDF generation
+  app.get("/api/resumes/:id/pdf", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const resume = await storage.getResume(req.params.id as string);
+      if (!resume) {
+        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+      }
+      const doc = generateResumePDF(resume.content as ResumeContent);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${(resume.title || "resume").replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`);
+      doc.pipe(res);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {
