@@ -10,9 +10,10 @@ import {
   type InsertUser,
   type ResumeContent,
 } from "@shared/schema";
+import { env } from "./env";
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: env.DATABASE_URL,
 });
 
 export const db = drizzle(pool);
