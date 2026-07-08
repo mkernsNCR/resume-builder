@@ -10,7 +10,7 @@ interface FileUploadProps {
   isLoading?: boolean;
 }
 
-export function FileUpload({ onFileSelect, onExtractedText, isLoading }: FileUploadProps) {
+export function FileUpload({ onFileSelect, isLoading }: FileUploadProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
