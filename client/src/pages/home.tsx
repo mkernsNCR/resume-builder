@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { FileUpload } from "@/components/file-upload";
 import { ExtractedTextDisplay } from "@/components/extracted-text-display";
 import { ResumeEditor } from "@/components/resume-editor";
@@ -26,6 +27,8 @@ import {
   ChevronRight,
   Trash2,
   Copy,
+  Undo2,
+  Redo2,
   Menu,
 } from "lucide-react";
 
@@ -69,7 +72,15 @@ export default function Home() {
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const currentResumeIdRef = useRef<string | null>(null);
   const editorVersionRef = useRef(0);
-  const [content, setContent] = useState<ResumeContent>(defaultContent);
+  const {
+    present: content,
+    set: setContent,
+    undo,
+    redo,
+    reset: resetContent,
+    canUndo,
+    canRedo,
+  } = useUndoRedo<ResumeContent>(defaultContent);
   const [template, setTemplate] = useState<ResumeTemplate>("modern");
   const [extractedText, setExtractedText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -246,7 +257,7 @@ export default function Home() {
         advanceEditorGeneration();
         currentResumeIdRef.current = null;
         setCurrentResumeId(null);
-        setContent(defaultContent);
+        resetContent(defaultContent);
         setExtractedText("");
       }
       setDeletingResumeId(null);
@@ -329,7 +340,7 @@ export default function Home() {
 
   const handleContentChange = useCallback((updates: Partial<ResumeContent>) => {
     setContent((prev) => ({ ...prev, ...updates }));
-  }, []);
+  }, [setContent]);
 
   const processSaveQueue = useCallback(async () => {
     if (saveInFlightRef.current) return;
@@ -416,6 +427,23 @@ export default function Home() {
       }
     };
   }, [content, template, handleSave]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod) return;
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
 
   // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
   const handleExportPDF = async () => {
@@ -637,7 +665,7 @@ export default function Home() {
     advanceEditorGeneration();
     currentResumeIdRef.current = resume.id;
     setCurrentResumeId(resume.id);
-    setContent(nextContent);
+    resetContent(nextContent);
     setTemplate(nextTemplate);
   };
 
@@ -649,7 +677,7 @@ export default function Home() {
     advanceEditorGeneration();
     currentResumeIdRef.current = null;
     setCurrentResumeId(null);
-    setContent(defaultContent);
+    resetContent(defaultContent);
     setTemplate("modern");
     setExtractedText("");
   };
@@ -789,6 +817,28 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 pr-10 sm:pr-12 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={undo}
+              disabled={!canUndo}
+              data-testid="button-undo"
+              aria-label="Undo"
+              className="h-8 w-8"
+            >
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={redo}
+              disabled={!canRedo}
+              data-testid="button-redo"
+              aria-label="Redo"
+              className="h-8 w-8"
+            >
+              <Redo2 className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -1029,7 +1079,7 @@ export default function Home() {
                               getAutosaveFingerprint(defaultContent, template);
                             advanceEditorGeneration();
                             currentResumeIdRef.current = null;
-                            setContent(defaultContent);
+                            resetContent(defaultContent);
                             setCurrentResumeId(null);
                             setActiveTab("edit");
                           }}
