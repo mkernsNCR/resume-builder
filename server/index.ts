@@ -5,6 +5,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { env } from "./env";
+import { ApiError } from "./api-error";
 
 const isTestEnv = env.NODE_ENV === "test";
 
@@ -91,17 +92,25 @@ app.use("/api/upload", uploadLimiter);
   await registerRoutes(httpServer, app);
 
   app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
-    const error = err as Error & { status?: number; statusCode?: number };
-    const status = error.status || error.statusCode || 500;
-    const message = error.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    if (err instanceof ApiError) {
+      if (err.statusCode >= 500) {
+        console.error(`[ApiError] ${err.code}:`, err.message);
+      }
+      return res.status(err.statusCode).json({
+        code: err.code,
+        message: err.message,
+      });
+    }
+
+    console.error("Unhandled error:", err);
+    return res.status(500).json({
+      code: "INTERNAL_ERROR",
+      message: "Internal server error",
+    });
   });
 
   // importantly only setup vite in development and after
