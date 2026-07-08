@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import {
   resumes,
   users,
@@ -85,7 +85,7 @@ export class DatabaseStorage implements IStorage {
   async updateResume(id: string, updates: Partial<InsertResume>): Promise<Resume | undefined> {
     const result = await db
       .update(resumes)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: sql`now()` })
       .where(eq(resumes.id, id))
       .returning();
     return result[0];
