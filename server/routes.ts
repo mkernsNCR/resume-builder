@@ -11,6 +11,7 @@ import { parseResumeText } from "./resume-parser";
 import { fileTypeFromFile } from "file-type";
 import { ApiError } from "./api-error";
 import { scoreResume } from "./resume-scoring";
+import { matchJobDescription } from "./job-matcher";
 
 const require = createRequire(import.meta.url);
 
@@ -248,6 +249,24 @@ export async function registerRoutes(
       }
     },
   );
+
+  // Match resume against job description
+  app.post("/api/resumes/:id/match", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const resume = await storage.getResume(req.params.id as string);
+      if (!resume) {
+        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+      }
+      const { jobDescription } = req.body as { jobDescription?: string };
+      if (!jobDescription || jobDescription.trim().length === 0) {
+        throw ApiError.badRequest("jobDescription is required", "VALIDATION_ERROR");
+      }
+      const result = matchJobDescription(resume.content as ResumeContent, jobDescription);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {
