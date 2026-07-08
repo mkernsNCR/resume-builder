@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type MouseEvent } from "react";
+import { useState, useRef, useCallback, useEffect, type MouseEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export default function Home() {
 
   // Save resume mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: { content: ResumeContent; template: string; title: string }) => {
+    mutationFn: async (data: { content: ResumeContent; template: string; title: string; showToast?: boolean }) => {
       if (currentResumeId) {
         return apiRequest("PUT", `/api/resumes/${currentResumeId}`, {
           title: data.title,
@@ -83,16 +83,18 @@ export default function Home() {
         });
       }
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response, variables) => {
       const result = await response.json();
       if (!currentResumeId) {
         setCurrentResumeId(result.id);
       }
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      toast({
-        title: "Resume saved",
-        description: "Your changes have been saved successfully.",
-      });
+      if (variables.showToast !== false) {
+        toast({
+          title: "Resume saved",
+          description: "Your changes have been saved successfully.",
+        });
+      }
     },
     onError: () => {
       toast({
@@ -209,12 +211,26 @@ export default function Home() {
     setContent((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback((opts?: { showToast?: boolean }) => {
     const title = content.fullName 
       ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
       : "Untitled Resume";
-    saveMutation.mutate({ content, template, title });
-  };
+    saveMutation.mutate({ content, template, title, showToast: opts?.showToast });
+  }, [content, template, saveMutation]);
+
+  // Autosave with debouncing — saves 2s after content/template stops changing
+  const skipAutosaveRef = useRef(true);
+  useEffect(() => {
+    if (skipAutosaveRef.current) {
+      skipAutosaveRef.current = false;
+      return;
+    }
+    if (!content.fullName) return;
+    const timer = setTimeout(() => {
+      handleSave({ showToast: false });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [content, template, handleSave]);
 
   // Client-side PDF export using html2canvas + jsPDF
   const handleExportPDF = async () => {
@@ -422,12 +438,14 @@ export default function Home() {
   };
 
   const loadResume = (resume: Resume) => {
+    skipAutosaveRef.current = true;
     setCurrentResumeId(resume.id);
     setContent(resume.content as ResumeContent);
     setTemplate(resume.template as ResumeTemplate);
   };
 
   const createNewResume = () => {
+    skipAutosaveRef.current = true;
     setCurrentResumeId(null);
     setContent(defaultContent);
     setTemplate("modern");
@@ -552,7 +570,7 @@ export default function Home() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={saveMutation.isPending}
               data-testid="button-save"
               className="px-2 sm:px-3"
