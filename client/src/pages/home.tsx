@@ -818,25 +818,21 @@ export default function Home() {
                           See how your resume looks in real-time
                         </p>
                       </div>
-                      <div className="w-full pb-4 flex justify-center">
-                        <div 
+                      <div className="w-full pb-4 flex justify-center overflow-hidden">
+                        <div
                           className="relative"
-                          style={{ 
+                          style={{
                             width: `${816 * 0.45}px`,
-                            height: `${1056 * 0.45}px`,
                           }}
                         >
-                          <div 
-                            className="absolute top-0 left-0 origin-top-left" 
-                            style={{ 
+                          <div
+                            className="origin-top-left"
+                            style={{
                               transform: 'scale(0.45)',
                               width: '816px',
-                              height: '1056px',
-                              boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-                              border: '1px solid #e5e7eb',
                             }}
                           >
-                            <ResumePreview content={content} template={template} />
+                            <ResumePreview content={content} template={template} paginated />
                           </div>
                         </div>
                       </div>
@@ -855,20 +851,20 @@ export default function Home() {
                 <span className="text-sm font-medium">Live Preview</span>
               </div>
               <ScrollArea className="flex-1">
-                <div className="p-6 flex justify-center">
-                  <div 
+                <div className="p-6 flex justify-center overflow-hidden">
+                  <div
                     className="relative"
-                    style={{ 
+                    style={{
                       width: `${816 * 0.65}px`,
-                      height: `${1056 * 0.65}px`,
                     }}
                   >
-                    <div 
+                    <div
                       ref={printRef}
                       className="origin-top-left"
-                      style={{ 
+                      style={{
                         transform: 'scale(0.65)',
                         transformOrigin: 'top left',
+                        width: '816px',
                       }}
                     >
                       <ResumePreview content={content} template={template} paginated />

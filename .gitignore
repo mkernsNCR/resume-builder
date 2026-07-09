@@ -5,7 +5,10 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
+# Environment variables (local secrets)
+.env
+
 # Playwright
 playwright-report/
 test-results/
-.playwright/
+.playwright/.env

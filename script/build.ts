@@ -30,6 +30,7 @@ const allowlist = [
   "xlsx",
   "zod",
   "zod-validation-error",
+  "mammoth",
 ];
 
 async function buildAll() {
@@ -50,8 +51,16 @@ async function buildAll() {
     bundle: true,
     format: "cjs",
     outfile: "dist/index.cjs",
+    banner: {
+      js: [
+        `const { createRequire: __bundled_createRequire } = require("module");`,
+        `const __bundled_require = __bundled_createRequire(__filename);`,
+        `const __import_meta_url = require("url").pathToFileURL(__filename).href;`,
+      ].join("\n"),
+    },
     define: {
       "process.env.NODE_ENV": '"production"',
+      "import.meta.url": "__import_meta_url",
     },
     minify: true,
     external: externals,
