@@ -117,7 +117,7 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                   <div className="space-y-2">
                     <Label>Field of Study</Label>
                     <Input
-                      value={edu.field}
+                      value={edu.field || ""}
                       onChange={(e) =>
                         updateEducation(edu.id, { field: e.target.value })
                       }
@@ -128,7 +128,7 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                   <div className="space-y-2">
                     <Label>GPA</Label>
                     <Input
-                      value={edu.gpa}
+                      value={edu.gpa || ""}
                       onChange={(e) =>
                         updateEducation(edu.id, { gpa: e.target.value })
                       }
@@ -150,7 +150,7 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                   <div className="space-y-2">
                     <Label>End Date</Label>
                     <Input
-                      value={edu.endDate}
+                      value={edu.endDate || ""}
                       onChange={(e) =>
                         updateEducation(edu.id, { endDate: e.target.value })
                       }
