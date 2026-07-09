@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import { createRequire } from "module";
 import multer from "multer";
@@ -9,6 +9,7 @@ import { storage, seedDatabase } from "./storage";
 import { insertResumeSchema, resumeContentSchema } from "@shared/schema";
 import { parseResumeText } from "./resume-parser";
 import { fileTypeFromFile } from "file-type";
+import { ApiError } from "./api-error";
 
 const require = createRequire(import.meta.url);
 
@@ -123,58 +124,63 @@ export async function registerRoutes(
   await seedDatabase();
 
   // Get all resumes
-  app.get("/api/resumes", async (req: Request, res: Response) => {
+  app.get("/api/resumes", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const resumes = await storage.getAllResumes();
       res.json(resumes);
     } catch (error) {
-      console.error("Error fetching resumes:", error);
-      res.status(500).json({ error: "Failed to fetch resumes" });
+      next(error);
     }
   });
 
   // Get single resume
-  app.get("/api/resumes/:id", async (req: Request, res: Response) => {
+  app.get("/api/resumes/:id", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const resume = await storage.getResume(req.params.id as string);
       if (!resume) {
-        return res.status(404).json({ error: "Resume not found" });
+        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
       }
       res.json(resume);
     } catch (error) {
-      console.error("Error fetching resume:", error);
-      res.status(500).json({ error: "Failed to fetch resume" });
+      next(error);
     }
   });
 
   // Create resume
-  app.post("/api/resumes", async (req: Request, res: Response) => {
+  app.post("/api/resumes", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const validationResult = insertResumeSchema.safeParse(req.body);
       if (!validationResult.success) {
-        return res.status(400).json({ error: validationResult.error.errors });
+        throw ApiError.badRequest(
+          "Invalid resume data",
+          "VALIDATION_ERROR",
+          validationResult.error.flatten(),
+        );
       }
       const resume = await storage.createResume(validationResult.data);
       res.status(201).json(resume);
     } catch (error) {
-      console.error("Error creating resume:", error);
-      res.status(500).json({ error: "Failed to create resume" });
+      next(error);
     }
   });
 
   // Update resume with validation
-  app.put("/api/resumes/:id", async (req: Request, res: Response) => {
+  app.put("/api/resumes/:id", async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Validate the update payload
       const validationResult = updateResumeSchema.safeParse(req.body);
       if (!validationResult.success) {
-        return res.status(400).json({ error: validationResult.error.errors });
+        throw ApiError.badRequest(
+          "Invalid resume data",
+          "VALIDATION_ERROR",
+          validationResult.error.flatten(),
+        );
       }
 
       // Check if resume exists
       const existingResume = await storage.getResume(req.params.id as string);
       if (!existingResume) {
-        return res.status(404).json({ error: "Resume not found" });
+        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
       }
 
       // Update with validated data
@@ -192,29 +198,27 @@ export async function registerRoutes(
       const resume = await storage.updateResume(req.params.id as string, updateData);
       res.json(resume);
     } catch (error) {
-      console.error("Error updating resume:", error);
-      res.status(500).json({ error: "Failed to update resume" });
+      next(error);
     }
   });
 
   // Delete resume
-  app.delete("/api/resumes/:id", async (req: Request, res: Response) => {
+  app.delete("/api/resumes/:id", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const deleted = await storage.deleteResume(req.params.id as string);
       if (!deleted) {
-        return res.status(404).json({ error: "Resume not found" });
+        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting resume:", error);
-      res.status(500).json({ error: "Failed to delete resume" });
+      next(error);
     }
   });
 
   // Upload file and extract text
-  app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
+  app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+      return next(ApiError.badRequest("No file uploaded", "NO_FILE"));
     }
 
     const filePath = req.file.path;
@@ -224,7 +228,7 @@ export async function registerRoutes(
       // Validate magic bytes match claimed MIME type
       const isValid = await validateFileType(filePath, mimeType);
       if (!isValid) {
-        return res.status(400).json({ error: "File content does not match its type. Only PDF and Word documents are allowed." });
+        throw ApiError.badRequest("File content does not match its type. Only PDF and Word documents are allowed.", "INVALID_FILE_TYPE");
       }
 
       let extractedText = "";
@@ -247,8 +251,7 @@ export async function registerRoutes(
         parsedContent,
       });
     } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: "Failed to process file" });
+      next(error);
     } finally {
       // Always clean up the temp file, including on error paths
       fs.unlink(filePath, (err) => {
