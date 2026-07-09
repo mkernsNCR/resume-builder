@@ -9,7 +9,8 @@ const isTestEnv = env.NODE_ENV === "test";
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isTestEnv ? Infinity : 300,
+  limit: 300,
+  skip: () => isTestEnv,
   standardHeaders: true,
   legacyHeaders: false,
   message: { code: "RATE_LIMITED", message: "Too many requests, please try again later." },
@@ -17,7 +18,8 @@ const apiLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isTestEnv ? Infinity : 10,
+  limit: 10,
+  skip: () => isTestEnv,
   standardHeaders: true,
   legacyHeaders: false,
   message: { code: "RATE_LIMITED", message: "Too many upload requests, please try again later." },
