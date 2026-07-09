@@ -1,8 +1,29 @@
 import express, { type Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { env } from "./env";
+
+const isTestEnv = env.NODE_ENV === "test";
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  skip: () => isTestEnv,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: "RATE_LIMITED", message: "Too many requests, please try again later." },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skip: () => isTestEnv,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: "RATE_LIMITED", message: "Too many upload requests, please try again later." },
+});
 
 const app = express();
 const httpServer = createServer(app);
@@ -46,6 +67,9 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use("/api", apiLimiter);
+app.use("/api/upload", uploadLimiter);
 
 (async () => {
   await registerRoutes(httpServer, app);
