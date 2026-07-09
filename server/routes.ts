@@ -8,8 +8,53 @@ import { z } from "zod";
 import { storage, seedDatabase } from "./storage";
 import { insertResumeSchema, resumeContentSchema } from "@shared/schema";
 import { parseResumeText } from "./resume-parser";
+import { fileTypeFromFile } from "file-type";
 
 const require = createRequire(import.meta.url);
+
+// OLE2 signature for legacy .doc files (D0 CF 11 E0)
+const OLE2_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0]);
+
+async function validateFileType(filePath: string, claimedMimeType: string): Promise<boolean> {
+  // For legacy .doc files, check OLE2 signature manually (file-type doesn't support .doc)
+  if (claimedMimeType === "application/msword") {
+    const header = Buffer.alloc(4);
+    const fd = fs.openSync(filePath, "r");
+    try {
+      fs.readSync(fd, header, 0, 4, 0);
+    } finally {
+      fs.closeSync(fd);
+    }
+    return header.equals(OLE2_SIGNATURE);
+  }
+
+  const type = await fileTypeFromFile(filePath);
+  if (!type) return false;
+
+  if (claimedMimeType === "application/pdf") {
+    return type.mime === "application/pdf";
+  }
+  if (claimedMimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    // Keep MIME detection as primary signal, then confirm OOXML-specific archive markers.
+    const isDocxLikeMime =
+      type.mime === "application/zip" ||
+      type.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (!isDocxLikeMime) {
+      return false;
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+    const hasContentTypes = fileBuffer.includes(Buffer.from("[Content_Types].xml"));
+    const hasWordEntries = fileBuffer.includes(Buffer.from("word/"));
+    return hasContentTypes && hasWordEntries;
+  }
+
+  return false;
+}
+
+function sanitizeFilename(filename: string): string {
+  return path.basename(filename).replace(/[<>:"/\\|?*]/g, "_");
+}
 
 // Configure multer for file uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -181,40 +226,48 @@ export async function registerRoutes(
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const filePath = req.file.path;
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+      const mimeType = req.file.mimetype;
+
+      // Validate magic bytes match claimed MIME type
+      const isValid = await validateFileType(filePath, mimeType);
+      if (!isValid) {
+        return res.status(400).json({ error: "File content does not match its type. Only PDF and Word documents are allowed." });
       }
 
-      const filePath = req.file.path;
-      const mimeType = req.file.mimetype;
+      if (mimeType === "application/msword") {
+        return res.status(400).json({ error: "Legacy .doc files are not supported. Please upload a .docx or PDF file." });
+      }
+
       let extractedText = "";
 
       if (mimeType === "application/pdf") {
         extractedText = await extractTextFromPDF(filePath);
-      } else if (
-        mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        mimeType === "application/msword"
-      ) {
+      } else if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
         extractedText = await extractTextFromDOCX(filePath);
       }
-
-      // Clean up uploaded file after extraction
-      fs.unlink(filePath, (err) => {
-        if (err) console.error("Error deleting uploaded file:", err);
-      });
 
       // Parse the extracted text to get structured data
       const parsedContent = parseResumeText(extractedText);
 
       res.json({
-        filename: req.file.originalname,
+        filename: sanitizeFilename(req.file.originalname),
         extractedText: extractedText.trim(),
         parsedContent,
       });
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).json({ error: "Failed to process file" });
+    } finally {
+      // Always clean up the temp file, including on error paths
+      fs.unlink(filePath, (err) => {
+        if (err) console.error("Error deleting uploaded file:", err);
+      });
     }
   });
 
