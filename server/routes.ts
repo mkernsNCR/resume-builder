@@ -1,12 +1,12 @@
 import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
+import { type Server } from "http";
 import { createRequire } from "module";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { z } from "zod";
 import { storage, seedDatabase } from "./storage";
-import { insertResumeSchema, resumeContentSchema, type ResumeContent } from "@shared/schema";
+import { insertResumeSchema, resumeContentSchema } from "@shared/schema";
 import { parseResumeText } from "./resume-parser";
 
 const require = createRequire(import.meta.url);
@@ -51,14 +51,14 @@ const updateResumeSchema = z.object({
 
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
-  let parser: any = null;
+  let parser: { load: () => Promise<void>; getText: () => Promise<{ pages: { text: string }[] }>; destroy: () => Promise<void> } | null = null;
   try {
     // pdf-parse v2+ uses a class-based API that returns { pages: [{ text, num }] }
     const { PDFParse } = require("pdf-parse");
     const dataBuffer = fs.readFileSync(filePath);
     parser = new PDFParse({ data: dataBuffer });
-    await parser.load();
-    const result = await parser.getText();
+    await parser!.load();
+    const result = await parser!.getText();
     // Join all page texts together
     const text = result.pages?.map((p: { text: string }) => p.text).join('\n') || '';
     return text.trim();

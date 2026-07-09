@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, type MouseEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -180,7 +179,7 @@ export default function Home() {
         description: "The resume has been removed.",
       });
     },
-    onError: (_error, _deletedId) => {
+    onError: () => {
       setDeletingResumeId(null);
       toast({
         title: "Error",

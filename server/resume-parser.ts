@@ -320,7 +320,7 @@ function extractExperience(text: string): Array<{ id: string; company: string; p
     const afterDateStart = index + fullMatch.length;
     const afterDate = expText.substring(afterDateStart);
     // Position is typically on same line or next line, before bullets
-    const positionMatch = afterDate.match(/^[\s\n]*([A-Za-z][A-Za-z\s\-\/&]+?)(?=\s*\n|\s*•|$)/);
+    const positionMatch = afterDate.match(/^[\s\n]*([A-Za-z][A-Za-z\s\-/&]+?)(?=\s*\n|\s*•|$)/);
     let position = positionMatch ? positionMatch[1].trim() : "";
     // Clean up position - fix hyphenated titles
     position = position.replace(/\s+-/g, '-').replace(/-\s+/g, '-');

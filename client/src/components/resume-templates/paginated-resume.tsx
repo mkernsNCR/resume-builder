@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, type ReactNode } from "react";
+import { useRef, useEffect, useState } from "react";
 import type { ResumeContent, ResumeTemplate } from "@shared/schema";
 import { ModernTemplate } from "./modern-template";
 import { ClassicTemplate } from "./classic-template";

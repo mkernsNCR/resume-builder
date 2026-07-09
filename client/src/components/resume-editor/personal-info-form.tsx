@@ -116,7 +116,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       <Input
                         placeholder="John Doe"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
@@ -138,7 +138,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       <Input
                         placeholder="Senior Software Engineer"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
@@ -162,7 +162,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       placeholder="Brief overview of your experience and skills..."
                       className="min-h-[100px] resize-none"
                       {...field}
-                      onBlur={(e) => {
+                      onBlur={() => {
                         field.onBlur();
                         handleBlur();
                       }}
@@ -189,7 +189,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                         type="email"
                         placeholder="john@example.com"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
@@ -214,7 +214,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       <Input
                         placeholder="+1 (555) 123-4567"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
@@ -239,7 +239,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       <Input
                         placeholder="San Francisco, CA"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
@@ -264,7 +264,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       <Input
                         placeholder="linkedin.com/in/johndoe"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
@@ -289,7 +289,7 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
                       <Input
                         placeholder="www.johndoe.com"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleBlur();
                         }}
