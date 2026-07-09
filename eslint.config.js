@@ -10,8 +10,6 @@ export default tseslint.config(
       "playwright-report/",
       "test-results/",
       "client/src/components/ui/",
-      "scripts/",
-      "server/github.ts",
     ],
   },
   js.configs.recommended,
