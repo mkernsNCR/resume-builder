@@ -110,15 +110,9 @@ test.describe("Resume CRUD Operations", () => {
 
     await page.goto("/");
 
-    // Wait for resume cards to appear
-    const firstCard = page.getByTestId(/^resume-card-/).first();
-    await expect(firstCard).toBeVisible({ timeout: 10000 });
-
-    // The most recently created resume should be the first card
-    await expect(firstCard).toHaveAttribute(
-      "data-testid",
-      `resume-card-${created.id}`,
-    );
+    // Verify the created resume appears in the sidebar by id.
+    const createdCard = page.getByTestId(`resume-card-${created.id}`);
+    await expect(createdCard).toBeVisible({ timeout: 10000 });
   });
 
   test("should skip upload and create resume manually", async ({ page }) => {

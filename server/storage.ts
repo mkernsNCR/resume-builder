@@ -51,7 +51,7 @@ export class DatabaseStorage implements IStorage {
 
   // Resume methods
   async getAllResumes(): Promise<Resume[]> {
-    return db.select().from(resumes).orderBy(desc(resumes.updatedAt));
+    return db.select().from(resumes).orderBy(desc(resumes.updatedAt), desc(resumes.id));
   }
 
   async getResume(id: string): Promise<Resume | undefined> {
