@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import {
   resumes,
   users,
@@ -51,7 +51,7 @@ export class DatabaseStorage implements IStorage {
 
   // Resume methods
   async getAllResumes(): Promise<Resume[]> {
-    return db.select().from(resumes).orderBy(resumes.updatedAt);
+    return db.select().from(resumes).orderBy(desc(resumes.updatedAt), desc(resumes.id));
   }
 
   async getResume(id: string): Promise<Resume | undefined> {
