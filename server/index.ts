@@ -7,6 +7,7 @@ import { createServer } from "http";
 import { env } from "./env";
 
 const isTestEnv = env.NODE_ENV === "test";
+const isProduction = env.NODE_ENV === "production";
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -49,7 +50,9 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        scriptSrc: isProduction
+          ? ["'self'"]
+          : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
         fontSrc: ["'self'", "data:"],
