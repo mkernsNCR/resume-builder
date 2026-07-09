@@ -151,7 +151,11 @@ export async function registerRoutes(
     try {
       const validationResult = insertResumeSchema.safeParse(req.body);
       if (!validationResult.success) {
-        throw ApiError.badRequest("Invalid resume data", "VALIDATION_ERROR");
+        throw ApiError.badRequest(
+          "Invalid resume data",
+          "VALIDATION_ERROR",
+          validationResult.error.flatten(),
+        );
       }
       const resume = await storage.createResume(validationResult.data);
       res.status(201).json(resume);
@@ -166,7 +170,11 @@ export async function registerRoutes(
       // Validate the update payload
       const validationResult = updateResumeSchema.safeParse(req.body);
       if (!validationResult.success) {
-        throw ApiError.badRequest("Invalid resume data", "VALIDATION_ERROR");
+        throw ApiError.badRequest(
+          "Invalid resume data",
+          "VALIDATION_ERROR",
+          validationResult.error.flatten(),
+        );
       }
 
       // Check if resume exists

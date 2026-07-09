@@ -1,17 +1,19 @@
 export class ApiError extends Error {
   readonly statusCode: number;
   readonly code: string;
+  readonly details?: unknown;
 
-  constructor(statusCode: number, code: string, message: string) {
+  constructor(statusCode: number, code: string, message: string, details?: unknown) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
     Object.setPrototypeOf(this, ApiError.prototype);
   }
 
-  static badRequest(message = "Bad request", code = "BAD_REQUEST"): ApiError {
-    return new ApiError(400, code, message);
+  static badRequest(message = "Bad request", code = "BAD_REQUEST", details?: unknown): ApiError {
+    return new ApiError(400, code, message, details);
   }
 
   static notFound(message = "Resource not found", code = "NOT_FOUND"): ApiError {

@@ -103,6 +103,7 @@ app.use("/api/upload", uploadLimiter);
       return res.status(err.statusCode).json({
         code: err.code,
         message: err.message,
+        ...(err.details !== undefined ? { details: err.details } : {}),
       });
     }
 
