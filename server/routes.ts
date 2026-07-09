@@ -18,10 +18,13 @@ const OLE2_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0]);
 async function validateFileType(filePath: string, claimedMimeType: string): Promise<boolean> {
   // For legacy .doc files, check OLE2 signature manually (file-type doesn't support .doc)
   if (claimedMimeType === "application/msword") {
-    const fd = fs.openSync(filePath, "r");
     const header = Buffer.alloc(4);
-    fs.readSync(fd, header, 0, 4, 0);
-    fs.closeSync(fd);
+    const fd = fs.openSync(filePath, "r");
+    try {
+      fs.readSync(fd, header, 0, 4, 0);
+    } finally {
+      fs.closeSync(fd);
+    }
     return header.equals(OLE2_SIGNATURE);
   }
 
@@ -32,8 +35,18 @@ async function validateFileType(filePath: string, claimedMimeType: string): Prom
     return type.mime === "application/pdf";
   }
   if (claimedMimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    // DOCX files are ZIP archives
-    return type.mime === "application/zip" || type.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    // Keep MIME detection as primary signal, then confirm OOXML-specific archive markers.
+    const isDocxLikeMime =
+      type.mime === "application/zip" ||
+      type.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (!isDocxLikeMime) {
+      return false;
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+    const hasContentTypes = fileBuffer.includes(Buffer.from("[Content_Types].xml"));
+    const hasWordEntries = fileBuffer.includes(Buffer.from("word/"));
+    return hasContentTypes && hasWordEntries;
   }
 
   return false;
@@ -227,14 +240,15 @@ export async function registerRoutes(
         return res.status(400).json({ error: "File content does not match its type. Only PDF and Word documents are allowed." });
       }
 
+      if (mimeType === "application/msword") {
+        return res.status(400).json({ error: "Legacy .doc files are not supported. Please upload a .docx or PDF file." });
+      }
+
       let extractedText = "";
 
       if (mimeType === "application/pdf") {
         extractedText = await extractTextFromPDF(filePath);
-      } else if (
-        mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        mimeType === "application/msword"
-      ) {
+      } else if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
         extractedText = await extractTextFromDOCX(filePath);
       }
 
