@@ -1,4 +1,14 @@
 import "dotenv/config";
+// Handle environment validation errors gracefully
+process.on("uncaughtException", (error) => {
+  if (error.message === "Environment validation failed") {
+    // Error details already logged by parseEnv()
+    process.exitCode = 1;
+    process.exit();
+  }
+  throw error; // Re-throw other errors
+});
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";

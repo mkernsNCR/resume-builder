@@ -21,7 +21,7 @@ function parseEnv(): Env {
     for (const issue of result.error.issues) {
       console.error(`  ${issue.path.join(".")}: ${issue.message}`);
     }
-    process.exit(1);
+    throw new Error("Environment validation failed");
   }
 
   return result.data;
