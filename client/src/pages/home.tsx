@@ -204,27 +204,28 @@ export default function Home() {
       // If we have parsed content, pre-fill the form
       if (data.parsedContent) {
         const parsed = data.parsedContent;
-        setContent(prev => ({
-          ...prev,
-          fullName: parsed.fullName || prev.fullName,
-          title: parsed.title || prev.title,
-          summary: parsed.summary || prev.summary,
+        const parsedContent = {
+          ...content,
+          fullName: parsed.fullName || content.fullName,
+          title: parsed.title || content.title,
+          summary: parsed.summary || content.summary,
           contact: {
-            email: parsed.contact?.email || prev.contact?.email || "",
-            phone: parsed.contact?.phone || prev.contact?.phone || "",
-            location: parsed.contact?.location || prev.contact?.location || "",
-            linkedin: parsed.contact?.linkedin || prev.contact?.linkedin || "",
-            website: parsed.contact?.website || prev.contact?.website || "",
+            email: parsed.contact?.email || content.contact?.email || "",
+            phone: parsed.contact?.phone || content.contact?.phone || "",
+            location: parsed.contact?.location || content.contact?.location || "",
+            linkedin: parsed.contact?.linkedin || content.contact?.linkedin || "",
+            website: parsed.contact?.website || content.contact?.website || "",
           },
-          skills: parsed.skills?.length > 0 ? parsed.skills : prev.skills,
-          experience: parsed.experience?.length > 0 ? parsed.experience : prev.experience,
-          education: parsed.education?.length > 0 ? parsed.education : prev.education,
-          projects: parsed.projects?.length > 0 ? parsed.projects : prev.projects,
-        }));
+          skills: parsed.skills?.length > 0 ? parsed.skills : content.skills,
+          experience: parsed.experience?.length > 0 ? parsed.experience : content.experience,
+          education: parsed.education?.length > 0 ? parsed.education : content.education,
+          projects: parsed.projects?.length > 0 ? parsed.projects : content.projects,
+        };
         
         // Create a new resume with the parsed content
         advanceEditorGeneration();
         currentResumeIdRef.current = null;
+        resetContent(parsedContent);
         setCurrentResumeId(null);
       }
       
