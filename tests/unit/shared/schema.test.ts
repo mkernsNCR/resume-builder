@@ -43,14 +43,23 @@ describe("schema validation", () => {
       expect(result.success).toBe(true);
     });
 
-    it("rejects missing required id", () => {
-      const result = workExperienceSchema.safeParse({
-        company: "Tech Corp",
-        position: "Engineer",
-        startDate: "Jan 2020",
-      });
-      expect(result.success).toBe(false);
-    });
+    it.each(["id", "company", "position", "startDate"] as const)(
+      "rejects missing required %s",
+      (field) => {
+        const validEntry = {
+          id: "exp-1",
+          company: "Tech Corp",
+          position: "Engineer",
+          startDate: "Jan 2020",
+        };
+        const entryWithoutField = Object.fromEntries(
+          Object.entries(validEntry).filter(([key]) => key !== field),
+        );
+
+        const result = workExperienceSchema.safeParse(entryWithoutField);
+        expect(result.success).toBe(false);
+      },
+    );
   });
 
   describe("educationSchema", () => {
@@ -64,14 +73,23 @@ describe("schema validation", () => {
       expect(result.success).toBe(true);
     });
 
-    it("rejects missing institution", () => {
-      const result = educationSchema.safeParse({
-        id: "edu-1",
-        degree: "BSc",
-        startDate: "Sep 2016",
-      });
-      expect(result.success).toBe(false);
-    });
+    it.each(["id", "institution", "degree", "startDate"] as const)(
+      "rejects missing required %s",
+      (field) => {
+        const validEntry = {
+          id: "edu-1",
+          institution: "MIT",
+          degree: "BSc",
+          startDate: "Sep 2016",
+        };
+        const entryWithoutField = Object.fromEntries(
+          Object.entries(validEntry).filter(([key]) => key !== field),
+        );
+
+        const result = educationSchema.safeParse(entryWithoutField);
+        expect(result.success).toBe(false);
+      },
+    );
   });
 
   describe("skillSchema", () => {
