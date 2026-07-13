@@ -118,6 +118,19 @@ describe("schema validation", () => {
       });
       expect(result.success).toBe(false);
     });
+
+    it.each(["id", "name"] as const)(
+      "rejects missing required %s",
+      (field) => {
+        const validEntry = { id: "skill-1", name: "React" };
+        const entryWithoutField = Object.fromEntries(
+          Object.entries(validEntry).filter(([key]) => key !== field),
+        );
+
+        const result = skillSchema.safeParse(entryWithoutField);
+        expect(result.success).toBe(false);
+      },
+    );
   });
 
   describe("resumeContentSchema", () => {
