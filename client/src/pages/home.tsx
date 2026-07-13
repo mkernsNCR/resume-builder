@@ -60,6 +60,8 @@ export default function Home() {
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveInFlightRef = useRef(false);
 
   // Fetch all resumes
   const { data: resumes, isLoading: loadingResumes } = useQuery<Resume[]>({
@@ -104,6 +106,7 @@ export default function Home() {
       });
     },
   });
+  const saveResume = saveMutation.mutate;
 
   // Upload file mutation
   const uploadMutation = useMutation({
@@ -212,11 +215,21 @@ export default function Home() {
   }, []);
 
   const handleSave = useCallback((opts?: { showToast?: boolean }) => {
+    if (opts?.showToast !== false && autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (saveInFlightRef.current) return;
+
     const title = content.fullName 
       ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
       : "Untitled Resume";
-    saveMutation.mutate({ content, template, title, showToast: opts?.showToast });
-  }, [content, template, saveMutation]);
+    saveInFlightRef.current = true;
+    saveResume(
+      { content, template, title, showToast: opts?.showToast },
+      { onSettled: () => { saveInFlightRef.current = false; } },
+    );
+  }, [content, template, saveResume]);
 
   // Autosave with debouncing — saves 2s after content/template stops changing
   const skipAutosaveRef = useRef(true);
@@ -226,10 +239,16 @@ export default function Home() {
       return;
     }
     if (!content.fullName) return;
-    const timer = setTimeout(() => {
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
       handleSave({ showToast: false });
     }, 2000);
-    return () => clearTimeout(timer);
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
   }, [content, template, handleSave]);
 
   // Client-side PDF export using html2canvas + jsPDF
