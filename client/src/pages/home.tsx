@@ -283,10 +283,17 @@ export default function Home() {
   }, [content, template, processSaveQueue]);
 
   // Autosave with debouncing — saves 2s after content/template stops changing
-  const skipAutosaveRef = useRef(true);
+  const skipAutosaveSnapshotRef = useRef<{
+    content: ResumeContent;
+    template: ResumeTemplate;
+  } | null>({ content: defaultContent, template: "modern" });
   useEffect(() => {
-    if (skipAutosaveRef.current) {
-      skipAutosaveRef.current = false;
+    const skippedSnapshot = skipAutosaveSnapshotRef.current;
+    skipAutosaveSnapshotRef.current = null;
+    if (
+      skippedSnapshot?.content === content &&
+      skippedSnapshot.template === template
+    ) {
       return;
     }
     if (!content.fullName) return;
@@ -508,17 +515,25 @@ export default function Home() {
   };
 
   const loadResume = (resume: Resume) => {
-    skipAutosaveRef.current = true;
+    const nextContent = resume.content as ResumeContent;
+    const nextTemplate = resume.template as ResumeTemplate;
+    skipAutosaveSnapshotRef.current = {
+      content: nextContent,
+      template: nextTemplate,
+    };
     editorVersionRef.current += 1;
     pendingSaveRef.current = null;
     currentResumeIdRef.current = resume.id;
     setCurrentResumeId(resume.id);
-    setContent(resume.content as ResumeContent);
-    setTemplate(resume.template as ResumeTemplate);
+    setContent(nextContent);
+    setTemplate(nextTemplate);
   };
 
   const createNewResume = () => {
-    skipAutosaveRef.current = true;
+    skipAutosaveSnapshotRef.current = {
+      content: defaultContent,
+      template: "modern",
+    };
     editorVersionRef.current += 1;
     pendingSaveRef.current = null;
     currentResumeIdRef.current = null;
@@ -859,7 +874,10 @@ export default function Home() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            skipAutosaveRef.current = true;
+                            skipAutosaveSnapshotRef.current = {
+                              content: defaultContent,
+                              template,
+                            };
                             editorVersionRef.current += 1;
                             pendingSaveRef.current = null;
                             currentResumeIdRef.current = null;
