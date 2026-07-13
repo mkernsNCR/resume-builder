@@ -29,7 +29,7 @@ function suggestSummaryImprovements(content: ResumeContent): Suggestion[] {
     const experience = roleCount > 0
       ? `experience across ${roleCount} role${roleCount > 1 ? "s" : ""}`
       : "experience";
-    const suggested = `Results-driven ${content.title || "professional"} with ${experience} and a focus on ${topSkill}. Add your most relevant accomplishments and measurable impact.`;
+    const suggested = `${content.title || "Professional"} with ${experience} and a focus on ${topSkill}. [Add a verified accomplishment and measurable impact relevant to the target role.]`;
     suggestions.push({
       section: "Professional Summary",
       field: "summary",
@@ -66,9 +66,9 @@ function generateSummaryExtension(content: ResumeContent): string {
   const skillCount = (content.skills || []).length;
   const expCount = (content.experience || []).length;
   if (expCount > 0 && skillCount > 0) {
-    return `With ${expCount} role${expCount > 1 ? "s" : ""} across diverse projects and expertise in ${skillCount}+ technologies, I consistently deliver results that exceed expectations.`;
+    return `My background includes ${expCount} role${expCount > 1 ? "s" : ""} and experience with ${skillCount} technolog${skillCount === 1 ? "y" : "ies"}. [Add a verified outcome that is relevant to the target role.]`;
   }
-  return "Passionate about leveraging technology to solve complex problems and drive business growth.";
+  return "[Describe the problems you solve, the people you support, and one verified outcome.]";
 }
 
 function getQuantifiableAddition(content: ResumeContent): string {
@@ -102,9 +102,9 @@ function suggestExperienceHighlights(content: ResumeContent): Suggestion[] {
 
 function generateHighlightSuggestions(position: string, company: string): string[] {
   return [
-    `Spearheaded key initiatives as ${position} at ${company}, delivering measurable improvements in performance and reliability.`,
-    `Collaborated cross-functionally with product and design teams to ship high-quality features on time.`,
-    `Optimized existing systems and processes, resulting in improved efficiency and reduced technical debt.`,
+    `[Describe an initiative] as ${position} at ${company}, improving [verified metric] by [verified result].`,
+    `[Describe collaborators and your contribution] to deliver [specific verified outcome].`,
+    `Improved [system or process] by [verified action], resulting in [verified impact].`,
   ];
 }
 
@@ -137,7 +137,7 @@ function suggestProjectDescriptions(content: ResumeContent): Suggestion[] {
         section: "Projects",
         field: `description-${project.id}`,
         currentValue: "",
-        suggestedValue: `${project.name || "This project"} demonstrates practical application of key technologies and problem-solving skills. Built to solve a real-world challenge with a focus on performance and user experience.`,
+        suggestedValue: `${project.name || "This project"} was created to [describe the problem]. It uses [name the technologies] to [describe a verified outcome or capability].`,
         reason: `Add a description for ${project.name || "this project"} to give context on its purpose and impact.`,
       });
     }

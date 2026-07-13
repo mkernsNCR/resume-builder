@@ -284,18 +284,20 @@ export async function registerRoutes(
   );
 
   // AI content suggestions
-  app.post("/api/resumes/:id/suggestions", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const resume = await storage.getResume(req.params.id as string);
-      if (!resume) {
-        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+  app.post(
+    "/api/resumes/:id/suggestions",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const resume = await storage.getResume(req.params.id as string);
+        if (!resume) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        res.json(generateSuggestions(resume.content));
+      } catch (error) {
+        next(error);
       }
-      const result = generateSuggestions(resume.content as ResumeContent);
-      res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  });
+    },
+  );
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {
