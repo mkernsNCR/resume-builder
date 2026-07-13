@@ -105,6 +105,17 @@ describe("scoreResume", () => {
     expect(summary.score).toBeLessThan(summary.maxScore);
   });
 
+  it("can award the full 15 points for a complete summary", () => {
+    const completeSummary = {
+      ...fullContent,
+      summary: "A".repeat(150),
+    };
+    const result = scoreResume(completeSummary);
+    const summary = result.sections.find((s) => s.section === "Professional Summary")!;
+    expect(summary.score).toBe(15);
+    expect(summary.maxScore).toBe(15);
+  });
+
   it("penalizes missing highlights in experience", () => {
     const noHighlights = {
       ...fullContent,
@@ -121,5 +132,19 @@ describe("scoreResume", () => {
     const projects = result.sections.find((s) => s.section === "Projects")!;
     expect(projects.score).toBe(0);
     expect(projects.feedback.length).toBeGreaterThan(0);
+  });
+
+  it("requires a field of study on every education entry for full credit", () => {
+    const partialFields = {
+      ...fullContent,
+      education: [
+        ...fullContent.education!,
+        { id: "ed2", institution: "State University", degree: "MSc", startDate: "2018" },
+      ],
+    };
+    const result = scoreResume(partialFields);
+    const education = result.sections.find((s) => s.section === "Education")!;
+    expect(education.feedback).toContain("Add your field of study for each education entry.");
+    expect(education.score).toBeLessThan(education.maxScore);
   });
 });

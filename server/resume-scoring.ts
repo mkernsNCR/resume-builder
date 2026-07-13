@@ -88,9 +88,9 @@ function scoreSummary(content: ResumeContent): SectionScore {
   }
 
   if (summary.length >= 150) {
-    score += 3;
+    score += 5;
   } else if (summary.length >= 100) {
-    score += 2;
+    score += 3;
   } else {
     feedback.push("Consider expanding your summary to 150+ characters for a stronger narrative.");
     score += 1;
@@ -175,8 +175,8 @@ function scoreEducation(content: ResumeContent): SectionScore {
     score += 1;
   }
 
-  const hasField = education.some((e) => e.field && e.field.trim().length > 0);
-  if (hasField) {
+  const allHaveField = education.every((e) => e.field && e.field.trim().length > 0);
+  if (allHaveField) {
     score += 2;
   } else {
     feedback.push("Add your field of study for each education entry.");
