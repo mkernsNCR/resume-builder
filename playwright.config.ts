@@ -19,11 +19,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "NODE_ENV=test tsx server/index.ts",
+    command: "tsx server/index.ts",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     env: {
+      NODE_ENV: "test",
       PORT: process.env.PORT || "3000",
       DATABASE_URL: process.env.DATABASE_URL || "postgresql://localhost:5432/resume_builder",
     },

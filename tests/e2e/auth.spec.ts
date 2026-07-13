@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import { Pool } from "pg";
 
 const TEST_PASSWORD = "TestPassword123!";
+const createdUsernames = new Set<string>();
 
 function uniqueUsername(prefix: string): string {
   return `${prefix}_${randomUUID()}`;
@@ -10,11 +12,15 @@ function uniqueUsername(prefix: string): string {
 async function registerUser(
   request: APIRequestContext,
   username: string,
-): Promise<void> {
+): Promise<{ id: string; username: string }> {
   const response = await request.post("/api/auth/register", {
     data: { username, password: TEST_PASSWORD },
   });
+  if (response.ok()) {
+    createdUsernames.add(username);
+  }
   expect(response.status()).toBe(201);
+  return response.json();
 }
 
 async function logout(request: APIRequestContext): Promise<void> {
@@ -23,17 +29,36 @@ async function logout(request: APIRequestContext): Promise<void> {
 }
 
 test.describe("Authentication", () => {
+  test.afterAll(async () => {
+    if (createdUsernames.size === 0) {
+      return;
+    }
+
+    const pool = new Pool({
+      connectionString:
+        process.env.DATABASE_URL || "postgresql://localhost:5432/resume_builder",
+    });
+    const usernames = [...createdUsernames];
+
+    try {
+      await pool.query(
+        `DELETE FROM user_sessions
+         WHERE sess ->> 'userId' IN (
+           SELECT id::text FROM users WHERE username = ANY($1::text[])
+         )`,
+        [usernames],
+      );
+      await pool.query("DELETE FROM users WHERE username = ANY($1::text[])", [
+        usernames,
+      ]);
+    } finally {
+      await pool.end();
+    }
+  });
+
   test("should register a new user", async ({ request }) => {
     const username = uniqueUsername("testuser");
-    const response = await request.post("/api/auth/register", {
-      data: {
-        username,
-        password: TEST_PASSWORD,
-      },
-    });
-
-    expect(response.status()).toBe(201);
-    const body = await response.json();
+    const body = await registerUser(request, username);
     expect(body).toHaveProperty("id");
     expect(body.username).toBe(username);
   });
