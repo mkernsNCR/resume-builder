@@ -42,7 +42,9 @@ For production environments requiring point-in-time recovery (PITR):
    pg_basebackup -h localhost -U postgres -D /var/lib/postgresql/backups/base -Fp -Xs -P
    ```
 
-3. Restore to a specific point in time using `recovery.target_time` in `recovery.conf`.
+3. Restore to a specific point in time by creating `recovery.signal` and setting
+   `restore_command` and `recovery_target_time` in `postgresql.conf` or
+   `postgresql.auto.conf` (PostgreSQL 12+).
 
 ## Automated Backup Schedule
 
@@ -86,13 +88,16 @@ psql "$DATABASE_URL" -f backup_20250101_020000.sql
 1. Stop PostgreSQL.
 2. Replace the data directory with the base backup.
 3. Create `recovery.signal` in the data directory.
-4. Configure `recovery.conf` with target time:
+4. Configure recovery in `postgresql.auto.conf` (PostgreSQL 12+):
    ```
    restore_command = 'cp /var/lib/postgresql/wal_archive/%f %p'
    recovery_target_time = '2025-01-01 12:00:00'
    recovery_target_action = 'promote'
    ```
 5. Start PostgreSQL. It will replay WAL files up to the target time.
+
+PostgreSQL 11 and earlier use `recovery.conf` instead of `recovery.signal` and
+the regular server configuration files.
 
 ## Off-Site Storage
 
