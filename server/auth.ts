@@ -1,26 +1,33 @@
 import bcrypt from "bcrypt";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import { Pool } from "pg";
 import type { Request, Response, NextFunction } from "express";
 import { env } from "./env";
-import { storage } from "./storage";
+import { pool, storage } from "./storage";
 import { ApiError } from "./api-error";
 import "./session-types";
 
 const BCRYPT_ROUNDS = 12;
 
-const pgPool = new Pool({ connectionString: env.DATABASE_URL });
-
 const PgSessionStore = connectPgSimple(session);
+
+function getSessionSecret(): string {
+  if (env.NODE_ENV === "test") {
+    return "test-secret";
+  }
+  if (!env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET is required outside tests");
+  }
+  return env.SESSION_SECRET;
+}
 
 export const sessionMiddleware = session({
   store: new PgSessionStore({
-    pool: pgPool,
+    pool,
     tableName: "user_sessions",
     createTableIfMissing: true,
   }),
-  secret: env.NODE_ENV === "test" ? "test-secret" : process.env.SESSION_SECRET || "dev-secret-change-in-production",
+  secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -45,7 +52,7 @@ export interface AuthenticatedRequest extends Request {
 
 export function requireAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
   if (!req.session?.userId) {
-    return next(ApiError.notFound("Authentication required", "AUTH_REQUIRED"));
+    return next(ApiError.unauthorized("Authentication required", "AUTH_REQUIRED"));
   }
   next();
 }

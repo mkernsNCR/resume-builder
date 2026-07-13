@@ -8,29 +8,42 @@ import { env } from "./env";
 
 const BCRYPT_MAX_PASSWORD_BYTES = 72;
 const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const DUMMY_PASSWORD_HASH =
+  "$2b$12$ahyZK1czT5JOAY1ib10m4.bK5gDziAHIrJu15BJxhqVI4yyrxjMxG";
 
 function isWithinBcryptLimit(password: string): boolean {
   return Buffer.byteLength(password, "utf8") <= BCRYPT_MAX_PASSWORD_BYTES;
 }
 
-const registerSchema = z.object({
-  username: z.string().min(3).max(50),
-  password: z
+function bcryptSafePassword(minLength: number) {
+  return z
     .string()
-    .min(8)
+    .min(minLength)
     .refine(isWithinBcryptLimit, {
       message: `Password must not exceed ${BCRYPT_MAX_PASSWORD_BYTES} bytes`,
-    }),
+    });
+}
+
+function isUsernameUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const databaseError = error as { code?: unknown; constraint?: unknown };
+  return (
+    databaseError.code === "23505" &&
+    databaseError.constraint === "users_username_unique"
+  );
+}
+
+const registerSchema = z.object({
+  username: z.string().min(3).max(50),
+  password: bcryptSafePassword(8),
 });
 
 const loginSchema = z.object({
   username: z.string().min(1),
-  password: z
-    .string()
-    .min(1)
-    .refine(isWithinBcryptLimit, {
-      message: `Password must not exceed ${BCRYPT_MAX_PASSWORD_BYTES} bytes`,
-    }),
+  password: bcryptSafePassword(1),
 });
 
 const registerLimiter = rateLimit({
@@ -90,7 +103,15 @@ export function registerAuthRoutes(app: Express) {
       }
 
       const passwordHash = await hashPassword(password);
-      const user = await storage.createUser({ username, passwordHash });
+      let user;
+      try {
+        user = await storage.createUser({ username, passwordHash });
+      } catch (error) {
+        if (isUsernameUniqueViolation(error)) {
+          throw ApiError.badRequest("Username already taken", "USERNAME_TAKEN");
+        }
+        throw error;
+      }
 
       await establishAuthenticatedSession(req as AuthenticatedRequest, user.id);
 
@@ -110,12 +131,11 @@ export function registerAuthRoutes(app: Express) {
       const { username, password } = result.data;
 
       const user = await storage.getUserByUsername(username);
-      if (!user) {
-        throw ApiError.badRequest("Invalid username or password", "INVALID_CREDENTIALS");
-      }
-
-      const valid = await verifyPassword(password, user.passwordHash);
-      if (!valid) {
+      const valid = await verifyPassword(
+        password,
+        user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+      );
+      if (!user || !valid) {
         throw ApiError.badRequest("Invalid username or password", "INVALID_CREDENTIALS");
       }
 

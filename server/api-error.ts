@@ -14,6 +14,13 @@ export class ApiError extends Error {
     return new ApiError(400, code, message);
   }
 
+  static unauthorized(
+    message = "Authentication required",
+    code = "UNAUTHORIZED",
+  ): ApiError {
+    return new ApiError(401, code, message);
+  }
+
   static notFound(message = "Resource not found", code = "NOT_FOUND"): ApiError {
     return new ApiError(404, code, message);
   }

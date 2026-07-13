@@ -48,7 +48,7 @@ function getHandler(method: "GET" | "POST", path: string): RequestHandler {
   if (!handlers?.length) {
     throw new Error(`Route not registered: ${method} ${path}`);
   }
-  return handlers[handlers.length - 1];
+  return handlers.at(-1)!;
 }
 
 function createRequest(body: unknown): {
@@ -76,13 +76,16 @@ function createResponse(): {
   response: Response;
   status: ReturnType<typeof vi.fn>;
   json: ReturnType<typeof vi.fn>;
+  clearCookie: ReturnType<typeof vi.fn>;
 } {
   const status = vi.fn();
   const json = vi.fn();
-  const response = { status, json } as unknown as Response;
+  const clearCookie = vi.fn();
+  const response = { status, json, clearCookie } as unknown as Response;
   status.mockReturnValue(response);
   json.mockReturnValue(response);
-  return { response, status, json };
+  clearCookie.mockReturnValue(response);
+  return { response, status, json, clearCookie };
 }
 
 describe("registerAuthRoutes", () => {
@@ -172,6 +175,142 @@ describe("registerAuthRoutes", () => {
     expect(session.regenerate).toHaveBeenCalledOnce();
     expect(session.userId).toBe("user-1");
     expect(json).toHaveBeenCalledWith({ id: "user-1", username: "alice" });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("rejects registration when the username already exists", async () => {
+    mockStorage.getUserByUsername.mockResolvedValue({
+      id: "user-1",
+      username: "alice",
+    });
+    const { request } = createRequest({
+      username: "alice",
+      password: "correct horse battery staple",
+    });
+    const { response } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await getHandler("POST", "/api/auth/register")(request, response, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(
+      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
+    ).toMatchObject({ code: "USERNAME_TAKEN" });
+    expect(mockStorage.createUser).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent username insert conflict to USERNAME_TAKEN", async () => {
+    mockStorage.getUserByUsername.mockResolvedValue(undefined);
+    mockHashPassword.mockResolvedValue("password-hash");
+    mockStorage.createUser.mockRejectedValue({
+      code: "23505",
+      constraint: "users_username_unique",
+    });
+    const { request } = createRequest({
+      username: "alice",
+      password: "correct horse battery staple",
+    });
+    const { response } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await getHandler("POST", "/api/auth/register")(request, response, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(
+      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
+    ).toMatchObject({ code: "USERNAME_TAKEN" });
+  });
+
+  it("pays the password verification cost for an unknown username", async () => {
+    mockStorage.getUserByUsername.mockResolvedValue(undefined);
+    mockVerifyPassword.mockResolvedValue(false);
+    const { request, session } = createRequest({
+      username: "missing-user",
+      password: "correct horse battery staple",
+    });
+    const { response } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await getHandler("POST", "/api/auth/login")(request, response, next);
+
+    expect(mockVerifyPassword).toHaveBeenCalledWith(
+      "correct horse battery staple",
+      expect.stringMatching(/^\$2b\$12\$/),
+    );
+    expect(next).toHaveBeenCalledOnce();
+    expect(
+      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
+    ).toMatchObject({ code: "INVALID_CREDENTIALS" });
+    expect(session.regenerate).not.toHaveBeenCalled();
+    expect(session.userId).toBe("untrusted-session-user");
+  });
+
+  it("rejects an incorrect password without mutating the session", async () => {
+    mockStorage.getUserByUsername.mockResolvedValue({
+      id: "user-1",
+      username: "alice",
+      passwordHash: "password-hash",
+    });
+    mockVerifyPassword.mockResolvedValue(false);
+    const { request, session } = createRequest({
+      username: "alice",
+      password: "incorrect password",
+    });
+    const { response } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await getHandler("POST", "/api/auth/login")(request, response, next);
+
+    expect(mockVerifyPassword).toHaveBeenCalledWith(
+      "incorrect password",
+      "password-hash",
+    );
+    expect(next).toHaveBeenCalledOnce();
+    expect(
+      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
+    ).toMatchObject({ code: "INVALID_CREDENTIALS" });
+    expect(session.regenerate).not.toHaveBeenCalled();
+    expect(session.userId).toBe("untrusted-session-user");
+  });
+
+  it("destroys the session, clears the cookie, and confirms logout", () => {
+    const { request, session } = createRequest(undefined);
+    session.destroy.mockImplementation((callback: (error?: Error) => void) => {
+      callback();
+    });
+    const { response, clearCookie, json } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    getHandler("POST", "/api/auth/logout")(request, response, next);
+
+    expect(session.destroy).toHaveBeenCalledOnce();
+    expect(clearCookie).toHaveBeenCalledWith("connect.sid");
+    expect(json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("returns null from /me when the session is unauthenticated", async () => {
+    const { request, session } = createRequest(undefined);
+    delete session.userId;
+    const { response, json } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await getHandler("GET", "/api/auth/me")(request, response, next);
+
+    expect(json).toHaveBeenCalledWith(null);
+    expect(mockStorage.getUser).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("returns null from /me when the session user was deleted", async () => {
+    mockStorage.getUser.mockResolvedValue(undefined);
+    const { request } = createRequest(undefined);
+    const { response, json } = createResponse();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await getHandler("GET", "/api/auth/me")(request, response, next);
+
+    expect(mockStorage.getUser).toHaveBeenCalledWith("untrusted-session-user");
+    expect(json).toHaveBeenCalledWith(null);
     expect(next).not.toHaveBeenCalled();
   });
 });

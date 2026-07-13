@@ -80,6 +80,7 @@ A modern, full-stack resume builder application that allows users to create, edi
    Create a `.env` file in the root directory:
    ```env
    DATABASE_URL=postgresql://username:password@localhost:5432/resume_builder
+   SESSION_SECRET=replace-with-at-least-32-random-characters
    PORT=5000
    ```
 
@@ -277,6 +278,7 @@ npm run test:ui
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SESSION_SECRET` | Yes | Random secret of at least 32 characters for signing sessions |
 | `PORT` | No | Server port (default: 5000) |
 | `NODE_ENV` | No | `development` or `production` |
 

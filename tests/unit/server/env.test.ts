@@ -7,6 +7,7 @@ describe("envSchema", () => {
       DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
       PORT: "3000",
       NODE_ENV: "production",
+      SESSION_SECRET: "a-secure-session-secret-with-32-characters",
     });
 
     expect(result.success).toBe(true);
@@ -22,6 +23,7 @@ describe("envSchema", () => {
   it("applies defaults for PORT and NODE_ENV", () => {
     const result = envSchema.safeParse({
       DATABASE_URL: "postgresql://localhost:5432/db",
+      SESSION_SECRET: "a-secure-session-secret-with-32-characters",
     });
 
     expect(result.success).toBe(true);
@@ -35,6 +37,7 @@ describe("envSchema", () => {
     const result = envSchema.safeParse({
       DATABASE_URL: "postgresql://localhost:5432/db",
       PORT: "8080",
+      SESSION_SECRET: "a-secure-session-secret-with-32-characters",
     });
 
     expect(result.success).toBe(true);
@@ -90,5 +93,29 @@ describe("envSchema", () => {
       const issues = result.error.issues;
       expect(issues.some((i) => i.path[0] === "PORT")).toBe(true);
     }
+  });
+
+  it("requires a strong session secret outside tests", () => {
+    const missing = envSchema.safeParse({
+      DATABASE_URL: "postgresql://localhost:5432/db",
+      NODE_ENV: "production",
+    });
+    const tooShort = envSchema.safeParse({
+      DATABASE_URL: "postgresql://localhost:5432/db",
+      NODE_ENV: "production",
+      SESSION_SECRET: "too-short",
+    });
+
+    expect(missing.success).toBe(false);
+    expect(tooShort.success).toBe(false);
+  });
+
+  it("allows tests to use the built-in test session secret", () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: "postgresql://localhost:5432/db",
+      NODE_ENV: "test",
+    });
+
+    expect(result.success).toBe(true);
   });
 });

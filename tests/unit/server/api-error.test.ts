@@ -26,6 +26,13 @@ describe("ApiError", () => {
     expect(err.message).toBe("Custom message");
   });
 
+  it("unauthorized() creates a 401 error", () => {
+    const err = ApiError.unauthorized();
+    expect(err.statusCode).toBe(401);
+    expect(err.code).toBe("UNAUTHORIZED");
+    expect(err.message).toBe("Authentication required");
+  });
+
   it("notFound() creates a 404 error", () => {
     const err = ApiError.notFound();
     expect(err.statusCode).toBe(404);
