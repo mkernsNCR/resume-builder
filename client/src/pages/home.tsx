@@ -113,6 +113,9 @@ export default function Home() {
       ) {
         currentResumeIdRef.current = result.id;
         setCurrentResumeId(result.id);
+        // mutateAsync resolves only after onSuccess completes, so this ID is
+        // applied before the queue dequeues a follow-up create request. Keep
+        // that ordering guarantee if the mutation flow is ever refactored.
         if (
           pendingSaveRef.current?.resumeId === null &&
           pendingSaveRef.current.editorVersion === variables.editorVersion
@@ -262,6 +265,12 @@ export default function Home() {
           await saveResume(request);
         } catch {
           // The mutation's onError callback displays the failure to the user.
+          // Retain this value for the next save trigger unless a newer edit
+          // was queued while the failed request was in flight.
+          if (!pendingSaveRef.current) {
+            pendingSaveRef.current = request;
+          }
+          break;
         }
       }
     } finally {
