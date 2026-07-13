@@ -24,9 +24,12 @@ function suggestSummaryImprovements(content: ResumeContent): Suggestion[] {
   const summary = content.summary?.trim() || "";
 
   if (summary.length === 0) {
-    const expYears = (content.experience || []).length;
+    const roleCount = (content.experience || []).length;
     const topSkill = (content.skills || [])[0]?.name || "your core skill";
-    const suggested = `Results-driven ${content.title || "professional"} with ${expYears > 0 ? `${expYears}+ year${expYears > 1 ? "s" : ""} of experience` : "proven expertise"} in ${topSkill}. Proven track record of delivering high-impact solutions and driving team success.`;
+    const experience = roleCount > 0
+      ? `experience across ${roleCount} role${roleCount > 1 ? "s" : ""}`
+      : "experience";
+    const suggested = `Results-driven ${content.title || "professional"} with ${experience} and a focus on ${topSkill}. Add your most relevant accomplishments and measurable impact.`;
     suggestions.push({
       section: "Professional Summary",
       field: "summary",
@@ -35,16 +38,18 @@ function suggestSummaryImprovements(content: ResumeContent): Suggestion[] {
       reason: "A professional summary helps recruiters quickly understand your value. This template uses your title and top skill.",
     });
   } else if (summary.length < 100) {
+    const needsMetrics = !/\d/.test(summary);
+    const metricAddition = needsMetrics ? ` ${getQuantifiableAddition(content)}` : "";
     suggestions.push({
       section: "Professional Summary",
       field: "summary",
       currentValue: summary,
-      suggestedValue: `${summary} ${generateSummaryExtension(content)}`,
-      reason: "Your summary is brief. Expanding it with quantifiable achievements makes it more compelling.",
+      suggestedValue: `${summary} ${generateSummaryExtension(content)}${metricAddition}`,
+      reason: needsMetrics
+        ? "Your summary is brief and lacks measurable results. Expand it and add a verified metric from your experience."
+        : "Your summary is brief. Expanding it with relevant achievements makes it more compelling.",
     });
-  }
-
-  if (summary.length > 0 && !/\d/.test(summary)) {
+  } else if (!/\d/.test(summary)) {
     suggestions.push({
       section: "Professional Summary",
       field: "summary",
@@ -72,7 +77,7 @@ function getQuantifiableAddition(content: ResumeContent): string {
   if (quantifiable) {
     return `Key achievement: ${quantifiable}.`;
   }
-  return "Proven track record of improving efficiency and delivering measurable results.";
+  return "[Add a verified metric from your experience, such as time saved, revenue influenced, or performance improved.]";
 }
 
 function suggestExperienceHighlights(content: ResumeContent): Suggestion[] {
@@ -113,23 +118,13 @@ function suggestSkillLevels(content: ResumeContent): Suggestion[] {
         section: "Skills",
         field: `level-${skill.id}`,
         currentValue: "(not set)",
-        suggestedValue: guessSkillLevel(skill.name),
-        reason: `Adding a proficiency level for ${skill.name} helps recruiters gauge your expertise at a glance.`,
+        suggestedValue: "Choose: beginner, intermediate, advanced, or expert",
+        reason: `Choose the proficiency level that accurately reflects your experience with ${skill.name}.`,
       });
     }
   }
 
   return suggestions;
-}
-
-function guessSkillLevel(skillName: string): string {
-  const expertSkills = ["react", "javascript", "typescript", "python", "java", "node", "sql"];
-  const advancedSkills = ["aws", "docker", "kubernetes", "graphql", "redis", "mongodb"];
-  const lower = skillName.toLowerCase();
-
-  if (expertSkills.some((s) => lower.includes(s))) return "expert";
-  if (advancedSkills.some((s) => lower.includes(s))) return "advanced";
-  return "intermediate";
 }
 
 function suggestProjectDescriptions(content: ResumeContent): Suggestion[] {

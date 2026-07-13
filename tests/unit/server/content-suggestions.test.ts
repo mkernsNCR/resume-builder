@@ -46,6 +46,7 @@ describe("generateSuggestions", () => {
     const summarySuggestion = result.find((s) => s.field === "summary");
     expect(summarySuggestion).toBeDefined();
     expect(summarySuggestion!.suggestedValue.length).toBeGreaterThan(50);
+    expect(summarySuggestion!.suggestedValue).not.toContain("years of experience");
   });
 
   it("suggests expanding short summaries", () => {
@@ -59,8 +60,9 @@ describe("generateSuggestions", () => {
   it("suggests adding quantifiable metrics when summary lacks numbers", () => {
     const noNumbers: ResumeContent = { ...fullContent, summary: "Experienced engineer building web applications." };
     const result = generateSuggestions(noNumbers);
-    const quantSuggestion = result.find((s) => s.reason.includes("quantifiable"));
+    const quantSuggestion = result.find((s) => s.reason.includes("measurable"));
     expect(quantSuggestion).toBeDefined();
+    expect(result.filter((s) => s.field === "summary")).toHaveLength(1);
   });
 
   it("suggests highlights for experience entries without them", () => {
@@ -78,7 +80,8 @@ describe("generateSuggestions", () => {
     const result = generateSuggestions(fullContent);
     const skillSuggestion = result.find((s) => s.field === "level-s1");
     expect(skillSuggestion).toBeDefined();
-    expect(skillSuggestion!.suggestedValue).toBe("expert");
+    expect(skillSuggestion!.suggestedValue).toContain("Choose:");
+    expect(skillSuggestion!.suggestedValue).not.toBe("expert");
   });
 
   it("does not suggest skill levels when already set", () => {
