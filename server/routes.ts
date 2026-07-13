@@ -311,6 +311,7 @@ export async function registerRoutes(
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="${(resume.title || "resume").replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`);
       doc.pipe(res);
+      doc.end();
     } catch (error) {
       next(error);
     }

@@ -53,7 +53,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
     y = addSectionHeader(doc, "Professional Summary", y);
     doc.fontSize(10).font("Helvetica");
     const summaryHeight = doc.heightOfString(content.summary, { width: PAGE_WIDTH - 2 * MARGIN });
-    checkPageBreak(doc, y, summaryHeight);
+    y = checkPageBreak(doc, y, summaryHeight);
     doc.text(content.summary, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
     y += summaryHeight + 12;
   }
@@ -65,7 +65,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
       if (exp.company) {
         doc.fontSize(11).font("Helvetica-Bold");
         const expHeader = `${exp.position || ""}${exp.position && exp.company ? " — " : ""}${exp.company}`;
-        checkPageBreak(doc, y, 14);
+        y = checkPageBreak(doc, y, 14);
         doc.text(expHeader, MARGIN, y);
         y += 14;
       }
@@ -73,7 +73,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
         doc.fontSize(9).font("Helvetica-Oblique");
         doc.fillColor("#777777");
         const dateRange = `${exp.startDate || ""}${exp.startDate && exp.endDate ? " — " : ""}${exp.endDate || "Present"}`;
-        checkPageBreak(doc, y, 12);
+        y = checkPageBreak(doc, y, 12);
         doc.text(dateRange, MARGIN, y);
         y += 12;
         doc.fillColor("#000000");
@@ -81,7 +81,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
       if (exp.description) {
         doc.fontSize(10).font("Helvetica");
         const descHeight = doc.heightOfString(exp.description, { width: PAGE_WIDTH - 2 * MARGIN });
-        checkPageBreak(doc, y, descHeight);
+        y = checkPageBreak(doc, y, descHeight);
         doc.text(exp.description, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
         y += descHeight + 4;
       }
@@ -90,7 +90,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
         for (const highlight of exp.highlights) {
           const bulletText = `• ${highlight}`;
           const hHeight = doc.heightOfString(bulletText, { width: PAGE_WIDTH - 2 * MARGIN });
-          checkPageBreak(doc, y, hHeight);
+          y = checkPageBreak(doc, y, hHeight);
           doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
           y += hHeight + 2;
         }
@@ -105,12 +105,12 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
     for (const edu of content.education) {
       doc.fontSize(11).font("Helvetica-Bold");
       const eduHeader = `${edu.degree || ""}${edu.field ? ` in ${edu.field}` : ""}`;
-      checkPageBreak(doc, y, 14);
+      y = checkPageBreak(doc, y, 14);
       doc.text(eduHeader, MARGIN, y);
       y += 14;
       if (edu.institution) {
         doc.fontSize(10).font("Helvetica");
-        checkPageBreak(doc, y, 12);
+        y = checkPageBreak(doc, y, 12);
         doc.text(edu.institution, MARGIN, y);
         y += 12;
       }
@@ -118,7 +118,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
         doc.fontSize(9).font("Helvetica-Oblique");
         doc.fillColor("#777777");
         const dateRange = `${edu.startDate || ""}${edu.startDate && edu.endDate ? " — " : ""}${edu.endDate || "Present"}`;
-        checkPageBreak(doc, y, 12);
+        y = checkPageBreak(doc, y, 12);
         doc.text(dateRange, MARGIN, y);
         y += 12;
         doc.fillColor("#000000");
@@ -135,7 +135,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
       .map((s) => `${s.name}${s.level ? ` (${s.level})` : ""}`)
       .join("  •  ");
     const skillHeight = doc.heightOfString(skillText, { width: PAGE_WIDTH - 2 * MARGIN });
-    checkPageBreak(doc, y, skillHeight);
+    y = checkPageBreak(doc, y, skillHeight);
     doc.text(skillText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
     y += skillHeight + 12;
   }
@@ -146,14 +146,14 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
     for (const project of content.projects) {
       if (project.name) {
         doc.fontSize(11).font("Helvetica-Bold");
-        checkPageBreak(doc, y, 14);
+        y = checkPageBreak(doc, y, 14);
         doc.text(project.name, MARGIN, y);
         y += 14;
       }
       if (project.description) {
         doc.fontSize(10).font("Helvetica");
         const pHeight = doc.heightOfString(project.description, { width: PAGE_WIDTH - 2 * MARGIN });
-        checkPageBreak(doc, y, pHeight);
+        y = checkPageBreak(doc, y, pHeight);
         doc.text(project.description, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
         y += pHeight + 4;
       }
@@ -162,7 +162,7 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
         for (const highlight of project.highlights) {
           const bulletText = `• ${highlight}`;
           const hHeight = doc.heightOfString(bulletText, { width: PAGE_WIDTH - 2 * MARGIN });
-          checkPageBreak(doc, y, hHeight);
+          y = checkPageBreak(doc, y, hHeight);
           doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
           y += hHeight + 2;
         }
@@ -171,12 +171,11 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
     }
   }
 
-  doc.end();
   return doc;
 }
 
 function addSectionHeader(doc: InstanceType<typeof PDFDocument>, title: string, y: number): number {
-  checkPageBreak(doc, y, 20);
+  y = checkPageBreak(doc, y, 20);
   doc.fontSize(13).font("Helvetica-Bold");
   doc.text(title, MARGIN, y);
   y += 16;
@@ -185,8 +184,10 @@ function addSectionHeader(doc: InstanceType<typeof PDFDocument>, title: string, 
   return y;
 }
 
-function checkPageBreak(doc: InstanceType<typeof PDFDocument>, y: number, neededHeight: number): void {
+function checkPageBreak(doc: InstanceType<typeof PDFDocument>, y: number, neededHeight: number): number {
   if (y + neededHeight > PAGE_HEIGHT - MARGIN) {
     doc.addPage();
+    return MARGIN;
   }
+  return y;
 }

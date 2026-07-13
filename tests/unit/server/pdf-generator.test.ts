@@ -35,17 +35,21 @@ const content: ResumeContent = {
   ],
 };
 
+async function renderPdf(resumeContent: ResumeContent): Promise<Buffer> {
+  const doc = generateResumePDF(resumeContent);
+  const chunks: Buffer[] = [];
+
+  return new Promise<Buffer>((resolve, reject) => {
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("error", reject);
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.end();
+  });
+}
+
 describe("generateResumePDF", () => {
   it("produces a PDF document with content", async () => {
-    const doc = generateResumePDF(content);
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-
-    await new Promise<void>((resolve) => {
-      doc.on("end", () => resolve());
-    });
-
-    const pdfBuffer = Buffer.concat(chunks);
+    const pdfBuffer = await renderPdf(content);
     expect(pdfBuffer.length).toBeGreaterThan(0);
     expect(pdfBuffer.toString("latin1").startsWith("%PDF")).toBe(true);
   });
@@ -61,41 +65,37 @@ describe("generateResumePDF", () => {
       skills: [],
       projects: [],
     };
-    const doc = generateResumePDF(emptyContent);
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-
-    await new Promise<void>((resolve) => {
-      doc.on("end", () => resolve());
-    });
-
-    const pdfBuffer = Buffer.concat(chunks);
+    const pdfBuffer = await renderPdf(emptyContent);
     expect(pdfBuffer.length).toBeGreaterThan(0);
     expect(pdfBuffer.toString("latin1").startsWith("%PDF")).toBe(true);
   });
 
   it("produces a larger PDF with more content", async () => {
-    const smallDoc = generateResumePDF({
+    const smallPdf = renderPdf({
       ...content,
       experience: [],
       education: [],
       skills: [],
       projects: [],
     });
-    const fullDoc = generateResumePDF(content);
-
-    const smallChunks: Buffer[] = [];
-    const fullChunks: Buffer[] = [];
-    smallDoc.on("data", (c: Buffer) => smallChunks.push(c));
-    fullDoc.on("data", (c: Buffer) => fullChunks.push(c));
-
-    await Promise.all([
-      new Promise<void>((r) => smallDoc.on("end", () => r())),
-      new Promise<void>((r) => fullDoc.on("end", () => r())),
-    ]);
-
-    const smallSize = Buffer.concat(smallChunks).length;
-    const fullSize = Buffer.concat(fullChunks).length;
+    const fullPdf = renderPdf(content);
+    const [smallSize, fullSize] = (await Promise.all([smallPdf, fullPdf])).map((pdf) => pdf.length);
     expect(fullSize).toBeGreaterThan(smallSize);
+  });
+
+  it("creates additional pages for overflowing content", async () => {
+    const longContent: ResumeContent = {
+      ...content,
+      experience: [
+        {
+          ...content.experience![0],
+          highlights: Array.from({ length: 100 }, (_, index) => `Achievement ${index + 1}`),
+        },
+      ],
+    };
+
+    const pdfBuffer = await renderPdf(longContent);
+    const pageCount = pdfBuffer.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+    expect(pageCount).toBeGreaterThan(1);
   });
 });
