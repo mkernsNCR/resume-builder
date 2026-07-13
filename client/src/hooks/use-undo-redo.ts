@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 
 interface HistoryState<T> {
   past: T[];
@@ -15,16 +15,13 @@ export function useUndoRedo<T>(initial: T) {
     future: [],
   });
 
-  const skipNextRef = useRef(false);
-
   const set = useCallback((updater: T | ((prev: T) => T), options?: { skipHistory?: boolean }) => {
     setState((current) => {
       const nextValue = typeof updater === "function"
         ? (updater as (prev: T) => T)(current.present)
         : updater;
 
-      if (options?.skipHistory || skipNextRef.current) {
-        skipNextRef.current = false;
+      if (options?.skipHistory) {
         return { ...current, present: nextValue };
       }
 
@@ -64,7 +61,6 @@ export function useUndoRedo<T>(initial: T) {
   }, []);
 
   const reset = useCallback((value: T) => {
-    skipNextRef.current = true;
     setState({ past: [], present: value, future: [] });
   }, []);
 

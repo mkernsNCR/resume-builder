@@ -432,11 +432,15 @@ export default function Home() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
-      if (!isMod) return;
-      if (e.key === "z" && !e.shiftKey) {
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (!isMod || isTyping) return;
+
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
-      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
         e.preventDefault();
         redo();
       }
