@@ -783,18 +783,19 @@ export default function Home() {
       const isMod = e.metaKey || e.ctrlKey;
       const target = e.target as HTMLElement;
       const isTyping = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      const key = e.key.toLowerCase();
 
       if (isMod) {
-        if (e.key === "z" && !e.shiftKey) {
+        if (!isTyping && key === "z" && !e.shiftKey) {
           e.preventDefault();
           undo();
-        } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        } else if (!isTyping && ((key === "z" && e.shiftKey) || key === "y")) {
           e.preventDefault();
           redo();
-        } else if (e.key === "s") {
+        } else if (key === "s") {
           e.preventDefault();
           handleSave();
-        } else if (e.key === "e") {
+        } else if (key === "e") {
           e.preventDefault();
           handleExportPDF();
         }
