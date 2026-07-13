@@ -112,7 +112,7 @@ test.describe("API Endpoints", () => {
       content: { fullName: "Idempotent Test User" },
     };
     const latestData = {
-      ...initialData,
+      id,
       title: "Latest Idempotent Create Test",
       content: { fullName: "Latest Idempotent Test User" },
     };
@@ -132,6 +132,7 @@ test.describe("API Endpoints", () => {
       expect(retried.id).toBe(id);
       expect(retried.title).toBe(latestData.title);
       expect(retried.content).toEqual(latestData.content);
+      expect(retried.template).toBe(initialData.template);
 
       const listResponse = await request.get("/api/resumes");
       const allResumes = await listResponse.json();
