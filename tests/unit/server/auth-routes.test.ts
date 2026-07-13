@@ -51,6 +51,10 @@ function getHandler(method: "GET" | "POST", path: string): RequestHandler {
   return handlers.at(-1)!;
 }
 
+function getNextError(next: NextFunction): unknown {
+  return (next as unknown as ReturnType<typeof vi.fn>).mock.calls.at(0)?.at(0);
+}
+
 function createRequest(body: unknown): {
   request: Request;
   session: TestSession;
@@ -111,9 +115,7 @@ describe("registerAuthRoutes", () => {
     await getHandler("POST", "/api/auth/register")(request, response, next);
 
     expect(next).toHaveBeenCalledOnce();
-    expect(
-      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
-    ).toMatchObject({
+    expect(getNextError(next)).toMatchObject({
       code: "VALIDATION_ERROR",
     });
     expect(mockStorage.getUserByUsername).not.toHaveBeenCalled();
@@ -193,9 +195,7 @@ describe("registerAuthRoutes", () => {
     await getHandler("POST", "/api/auth/register")(request, response, next);
 
     expect(next).toHaveBeenCalledOnce();
-    expect(
-      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
-    ).toMatchObject({ code: "USERNAME_TAKEN" });
+    expect(getNextError(next)).toMatchObject({ code: "USERNAME_TAKEN" });
     expect(mockStorage.createUser).not.toHaveBeenCalled();
   });
 
@@ -216,9 +216,7 @@ describe("registerAuthRoutes", () => {
     await getHandler("POST", "/api/auth/register")(request, response, next);
 
     expect(next).toHaveBeenCalledOnce();
-    expect(
-      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
-    ).toMatchObject({ code: "USERNAME_TAKEN" });
+    expect(getNextError(next)).toMatchObject({ code: "USERNAME_TAKEN" });
   });
 
   it("pays the password verification cost for an unknown username", async () => {
@@ -238,9 +236,7 @@ describe("registerAuthRoutes", () => {
       expect.stringMatching(/^\$2b\$12\$/),
     );
     expect(next).toHaveBeenCalledOnce();
-    expect(
-      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
-    ).toMatchObject({ code: "INVALID_CREDENTIALS" });
+    expect(getNextError(next)).toMatchObject({ code: "INVALID_CREDENTIALS" });
     expect(session.regenerate).not.toHaveBeenCalled();
     expect(session.userId).toBe("untrusted-session-user");
   });
@@ -266,9 +262,7 @@ describe("registerAuthRoutes", () => {
       "password-hash",
     );
     expect(next).toHaveBeenCalledOnce();
-    expect(
-      (next as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0],
-    ).toMatchObject({ code: "INVALID_CREDENTIALS" });
+    expect(getNextError(next)).toMatchObject({ code: "INVALID_CREDENTIALS" });
     expect(session.regenerate).not.toHaveBeenCalled();
     expect(session.userId).toBe("untrusted-session-user");
   });

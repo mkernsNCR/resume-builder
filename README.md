@@ -80,7 +80,8 @@ A modern, full-stack resume builder application that allows users to create, edi
    Create a `.env` file in the root directory:
    ```env
    DATABASE_URL=postgresql://username:password@localhost:5432/resume_builder
-   SESSION_SECRET=replace-with-at-least-32-random-characters
+   # Generate with: openssl rand -base64 32
+   SESSION_SECRET=
    PORT=5000
    ```
 
