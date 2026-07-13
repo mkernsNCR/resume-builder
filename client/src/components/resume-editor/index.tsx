@@ -21,15 +21,24 @@ interface ResumeEditorProps {
   content: ResumeContent;
   onChange: ResumeEditorChangeHandler;
   onCommit: ResumeEditorCommitHandler;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
 }
 
 export function ResumeEditor({
   content,
   onChange,
   onCommit,
+  activeTab,
+  onTabChange,
 }: ResumeEditorProps) {
   return (
-    <Tabs defaultValue="personal" className="w-full" data-resume-editor>
+    <Tabs
+      value={activeTab}
+      onValueChange={onTabChange}
+      className="w-full"
+      data-resume-editor
+    >
       <TabsList className="w-full grid grid-cols-5 mb-4">
         <TabsTrigger
           value="personal"
