@@ -47,9 +47,20 @@ const defaultContent: ResumeContent = {
   projects: [],
 };
 
+type SaveRequest = {
+  content: ResumeContent;
+  template: string;
+  title: string;
+  resumeId: string | null;
+  editorVersion: number;
+  showToast?: boolean;
+};
+
 export default function Home() {
   const { toast } = useToast();
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
+  const currentResumeIdRef = useRef<string | null>(null);
+  const editorVersionRef = useRef(0);
   const [content, setContent] = useState<ResumeContent>(defaultContent);
   const [template, setTemplate] = useState<ResumeTemplate>("modern");
   const [extractedText, setExtractedText] = useState("");
@@ -62,6 +73,7 @@ export default function Home() {
   const printRef = useRef<HTMLDivElement>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
+  const pendingSaveRef = useRef<SaveRequest | null>(null);
 
   // Fetch all resumes
   const { data: resumes, isLoading: loadingResumes } = useQuery<Resume[]>({
@@ -70,9 +82,9 @@ export default function Home() {
 
   // Save resume mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: { content: ResumeContent; template: string; title: string; showToast?: boolean }) => {
-      if (currentResumeId) {
-        return apiRequest("PUT", `/api/resumes/${currentResumeId}`, {
+    mutationFn: async (data: SaveRequest) => {
+      if (data.resumeId) {
+        return apiRequest("PUT", `/api/resumes/${data.resumeId}`, {
           title: data.title,
           content: data.content,
           template: data.template,
@@ -87,8 +99,19 @@ export default function Home() {
     },
     onSuccess: async (response, variables) => {
       const result = await response.json();
-      if (!currentResumeId) {
+      if (
+        !variables.resumeId &&
+        variables.editorVersion === editorVersionRef.current &&
+        !currentResumeIdRef.current
+      ) {
+        currentResumeIdRef.current = result.id;
         setCurrentResumeId(result.id);
+        if (
+          pendingSaveRef.current?.resumeId === null &&
+          pendingSaveRef.current.editorVersion === variables.editorVersion
+        ) {
+          pendingSaveRef.current.resumeId = result.id;
+        }
       }
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       if (variables.showToast !== false) {
@@ -106,7 +129,7 @@ export default function Home() {
       });
     },
   });
-  const saveResume = saveMutation.mutate;
+  const saveResume = saveMutation.mutateAsync;
 
   // Upload file mutation
   const uploadMutation = useMutation({
@@ -145,6 +168,9 @@ export default function Home() {
         }));
         
         // Create a new resume with the parsed content
+        editorVersionRef.current += 1;
+        currentResumeIdRef.current = null;
+        pendingSaveRef.current = null;
         setCurrentResumeId(null);
       }
       
@@ -174,6 +200,9 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       // If we deleted the current resume, reset to new
       if (deletedId === currentResumeId) {
+        editorVersionRef.current += 1;
+        currentResumeIdRef.current = null;
+        pendingSaveRef.current = null;
         setCurrentResumeId(null);
         setContent(defaultContent);
         setExtractedText("");
@@ -214,22 +243,44 @@ export default function Home() {
     setContent((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const processSaveQueue = useCallback(async () => {
+    if (saveInFlightRef.current) return;
+
+    saveInFlightRef.current = true;
+    try {
+      while (pendingSaveRef.current) {
+        const request = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        try {
+          await saveResume(request);
+        } catch {
+          // The mutation's onError callback displays the failure to the user.
+        }
+      }
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  }, [saveResume]);
+
   const handleSave = useCallback((opts?: { showToast?: boolean }) => {
     if (opts?.showToast !== false && autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
     }
-    if (saveInFlightRef.current) return;
 
     const title = content.fullName 
       ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
       : "Untitled Resume";
-    saveInFlightRef.current = true;
-    saveResume(
-      { content, template, title, showToast: opts?.showToast },
-      { onSettled: () => { saveInFlightRef.current = false; } },
-    );
-  }, [content, template, saveResume]);
+    pendingSaveRef.current = {
+      content,
+      template,
+      title,
+      resumeId: currentResumeIdRef.current,
+      editorVersion: editorVersionRef.current,
+      showToast: opts?.showToast,
+    };
+    void processSaveQueue();
+  }, [content, template, processSaveQueue]);
 
   // Autosave with debouncing — saves 2s after content/template stops changing
   const skipAutosaveRef = useRef(true);
@@ -458,6 +509,9 @@ export default function Home() {
 
   const loadResume = (resume: Resume) => {
     skipAutosaveRef.current = true;
+    editorVersionRef.current += 1;
+    pendingSaveRef.current = null;
+    currentResumeIdRef.current = resume.id;
     setCurrentResumeId(resume.id);
     setContent(resume.content as ResumeContent);
     setTemplate(resume.template as ResumeTemplate);
@@ -465,6 +519,9 @@ export default function Home() {
 
   const createNewResume = () => {
     skipAutosaveRef.current = true;
+    editorVersionRef.current += 1;
+    pendingSaveRef.current = null;
+    currentResumeIdRef.current = null;
     setCurrentResumeId(null);
     setContent(defaultContent);
     setTemplate("modern");
@@ -802,6 +859,10 @@ export default function Home() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            skipAutosaveRef.current = true;
+                            editorVersionRef.current += 1;
+                            pendingSaveRef.current = null;
+                            currentResumeIdRef.current = null;
                             setContent(defaultContent);
                             setCurrentResumeId(null);
                             setActiveTab("edit");
