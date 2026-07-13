@@ -2,17 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 import bcrypt from "bcrypt";
 
 vi.mock("../../../server/storage", () => ({
+  pool: { query: vi.fn() },
   storage: { getUser: vi.fn(), getUserByUsername: vi.fn(), createUser: vi.fn() },
 }));
 
 vi.mock("../../../server/env", () => ({
-  env: { DATABASE_URL: "postgresql://localhost:5432/test_db", PORT: 5000, NODE_ENV: "test" },
-}));
-
-vi.mock("pg", () => ({
-  Pool: class MockPool {
-    query = vi.fn();
-    end = vi.fn();
+  env: {
+    DATABASE_URL: "postgresql://localhost:5432/test_db",
+    PORT: 5000,
+    NODE_ENV: "test",
   },
 }));
 
