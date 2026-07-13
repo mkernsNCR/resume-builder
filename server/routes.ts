@@ -6,7 +6,7 @@ import path from "path";
 import fs from "fs";
 import { z } from "zod";
 import { storage, seedDatabase } from "./storage";
-import { insertResumeSchema, resumeContentSchema, type ResumeContent } from "@shared/schema";
+import { insertResumeSchema, resumeContentSchema } from "@shared/schema";
 import { parseResumeText } from "./resume-parser";
 import { fileTypeFromFile } from "file-type";
 import { ApiError } from "./api-error";
@@ -234,18 +234,20 @@ export async function registerRoutes(
   );
 
   // Score resume
-  app.post("/api/resumes/:id/score", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const resume = await storage.getResume(req.params.id as string);
-      if (!resume) {
-        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+  app.post(
+    "/api/resumes/:id/score",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const resume = await storage.getResume(req.params.id as string);
+        if (!resume) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        res.json(scoreResume(resume.content));
+      } catch (error) {
+        next(error);
       }
-      const result = scoreResume(resume.content as ResumeContent);
-      res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  });
+    },
+  );
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {
