@@ -56,6 +56,13 @@ type SaveRequest = {
   showToast?: boolean;
 };
 
+function getAutosaveFingerprint(
+  content: ResumeContent,
+  template: ResumeTemplate,
+): string {
+  return JSON.stringify([template, content]);
+}
+
 export default function Home() {
   const { toast } = useToast();
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
@@ -283,17 +290,13 @@ export default function Home() {
   }, [content, template, processSaveQueue]);
 
   // Autosave with debouncing — saves 2s after content/template stops changing
-  const skipAutosaveSnapshotRef = useRef<{
-    content: ResumeContent;
-    template: ResumeTemplate;
-  } | null>({ content: defaultContent, template: "modern" });
+  const skipAutosaveFingerprintRef = useRef<string | null>(
+    getAutosaveFingerprint(defaultContent, "modern"),
+  );
   useEffect(() => {
-    const skippedSnapshot = skipAutosaveSnapshotRef.current;
-    skipAutosaveSnapshotRef.current = null;
-    if (
-      skippedSnapshot?.content === content &&
-      skippedSnapshot.template === template
-    ) {
+    const skippedFingerprint = skipAutosaveFingerprintRef.current;
+    skipAutosaveFingerprintRef.current = null;
+    if (skippedFingerprint === getAutosaveFingerprint(content, template)) {
       return;
     }
     if (!content.fullName) return;
@@ -517,10 +520,10 @@ export default function Home() {
   const loadResume = (resume: Resume) => {
     const nextContent = resume.content as ResumeContent;
     const nextTemplate = resume.template as ResumeTemplate;
-    skipAutosaveSnapshotRef.current = {
-      content: nextContent,
-      template: nextTemplate,
-    };
+    skipAutosaveFingerprintRef.current = getAutosaveFingerprint(
+      nextContent,
+      nextTemplate,
+    );
     editorVersionRef.current += 1;
     pendingSaveRef.current = null;
     currentResumeIdRef.current = resume.id;
@@ -530,10 +533,10 @@ export default function Home() {
   };
 
   const createNewResume = () => {
-    skipAutosaveSnapshotRef.current = {
-      content: defaultContent,
-      template: "modern",
-    };
+    skipAutosaveFingerprintRef.current = getAutosaveFingerprint(
+      defaultContent,
+      "modern",
+    );
     editorVersionRef.current += 1;
     pendingSaveRef.current = null;
     currentResumeIdRef.current = null;
@@ -874,10 +877,8 @@ export default function Home() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            skipAutosaveSnapshotRef.current = {
-                              content: defaultContent,
-                              template,
-                            };
+                            skipAutosaveFingerprintRef.current =
+                              getAutosaveFingerprint(defaultContent, template);
                             editorVersionRef.current += 1;
                             pendingSaveRef.current = null;
                             currentResumeIdRef.current = null;
