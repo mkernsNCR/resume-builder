@@ -52,8 +52,14 @@ export function PersonalInfoForm({ content, onChange }: PersonalInfoFormProps) {
   // Watch all form values for live preview updates
   const watchedValues = useWatch({ control: form.control });
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const prevValuesRef = useRef<string>("");
 
   useEffect(() => {
+    // Serialize to compare by value, not reference, to avoid infinite re-render loop
+    const serialized = JSON.stringify(watchedValues);
+    if (serialized === prevValuesRef.current) return;
+    prevValuesRef.current = serialized;
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
