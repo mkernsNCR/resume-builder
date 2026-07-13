@@ -1,112 +1,137 @@
-import { test, expect } from "@playwright/test";
+import { randomUUID } from "node:crypto";
+import { test, expect, type APIRequestContext } from "@playwright/test";
+
+const TEST_PASSWORD = "TestPassword123!";
+
+function uniqueUsername(prefix: string): string {
+  return `${prefix}_${randomUUID()}`;
+}
+
+async function registerUser(
+  request: APIRequestContext,
+  username: string,
+): Promise<void> {
+  const response = await request.post("/api/auth/register", {
+    data: { username, password: TEST_PASSWORD },
+  });
+  expect(response.status()).toBe(201);
+}
+
+async function logout(request: APIRequestContext): Promise<void> {
+  const response = await request.post("/api/auth/logout");
+  expect(response.status()).toBe(200);
+}
 
 test.describe("Authentication", () => {
   test("should register a new user", async ({ request }) => {
+    const username = uniqueUsername("testuser");
     const response = await request.post("/api/auth/register", {
       data: {
-        username: `testuser_${Date.now()}`,
-        password: "TestPassword123!",
+        username,
+        password: TEST_PASSWORD,
       },
     });
 
-    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(201);
     const body = await response.json();
     expect(body).toHaveProperty("id");
-    expect(body).toHaveProperty("username");
-    expect(body.username).toMatch(/^testuser_/);
+    expect(body.username).toBe(username);
   });
 
   test("should reject duplicate username on register", async ({ request }) => {
-    const username = `dupuser_${Date.now()}`;
+    const username = uniqueUsername("dupuser");
 
-    const first = await request.post("/api/auth/register", {
-      data: { username, password: "TestPassword123!" },
-    });
-    expect(first.ok()).toBeTruthy();
+    await registerUser(request, username);
 
     const second = await request.post("/api/auth/register", {
-      data: { username, password: "TestPassword123!" },
+      data: { username, password: TEST_PASSWORD },
     });
-    expect(second.ok()).toBeFalsy();
     expect(second.status()).toBe(400);
+    await expect(second.json()).resolves.toMatchObject({
+      code: "USERNAME_TAKEN",
+    });
   });
 
   test("should reject registration with short password", async ({ request }) => {
     const response = await request.post("/api/auth/register", {
       data: {
-        username: `shortpass_${Date.now()}`,
+        username: uniqueUsername("shortpass"),
         password: "short",
       },
     });
 
-    expect(response.ok()).toBeFalsy();
     expect(response.status()).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
   });
 
   test("should login with valid credentials", async ({ request }) => {
-    const username = `loginuser_${Date.now()}`;
+    const username = uniqueUsername("loginuser");
 
-    await request.post("/api/auth/register", {
-      data: { username, password: "TestPassword123!" },
-    });
+    await registerUser(request, username);
+    await logout(request);
 
     const response = await request.post("/api/auth/login", {
-      data: { username, password: "TestPassword123!" },
+      data: { username, password: TEST_PASSWORD },
     });
 
-    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.username).toBe(username);
   });
 
   test("should reject login with wrong password", async ({ request }) => {
-    const username = `wrongpass_${Date.now()}`;
+    const username = uniqueUsername("wrongpass");
 
-    await request.post("/api/auth/register", {
-      data: { username, password: "TestPassword123!" },
-    });
+    await registerUser(request, username);
+    await logout(request);
 
     const response = await request.post("/api/auth/login", {
       data: { username, password: "WrongPassword!" },
     });
 
-    expect(response.ok()).toBeFalsy();
     expect(response.status()).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "INVALID_CREDENTIALS",
+    });
+
+    const meResponse = await request.get("/api/auth/me");
+    await expect(meResponse.json()).resolves.toBeNull();
   });
 
   test("should return null for /me when not authenticated", async ({ request }) => {
     const response = await request.get("/api/auth/me");
 
-    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body).toBeNull();
   });
 
   test("should return user info for /me when authenticated", async ({ request }) => {
-    const username = `meuser_${Date.now()}`;
+    const username = uniqueUsername("meuser");
 
-    await request.post("/api/auth/register", {
-      data: { username, password: "TestPassword123!" },
-    });
+    await registerUser(request, username);
 
     const meResponse = await request.get("/api/auth/me");
 
-    expect(meResponse.ok()).toBeTruthy();
+    expect(meResponse.status()).toBe(200);
     const meBody = await meResponse.json();
     expect(meBody).toHaveProperty("id");
     expect(meBody.username).toBe(username);
   });
 
   test("should logout successfully", async ({ request }) => {
-    const username = `logoutuser_${Date.now()}`;
+    const username = uniqueUsername("logoutuser");
 
-    await request.post("/api/auth/register", {
-      data: { username, password: "TestPassword123!" },
-    });
+    await registerUser(request, username);
 
     const logoutResponse = await request.post("/api/auth/logout");
-    expect(logoutResponse.ok()).toBeTruthy();
+    expect(logoutResponse.status()).toBe(200);
     const logoutBody = await logoutResponse.json();
     expect(logoutBody.success).toBe(true);
+
+    const meResponse = await request.get("/api/auth/me");
+    await expect(meResponse.json()).resolves.toBeNull();
   });
 });
