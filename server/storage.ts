@@ -12,6 +12,8 @@ import {
 } from "@shared/schema";
 import { env } from "./env";
 
+export type CreateResume = InsertResume & { id?: string };
+
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
 });
@@ -27,7 +29,7 @@ export interface IStorage {
   // Resume methods
   getAllResumes(): Promise<Resume[]>;
   getResume(id: string): Promise<Resume | undefined>;
-  createResume(resume: InsertResume): Promise<Resume>;
+  createResume(resume: CreateResume): Promise<Resume>;
   updateResume(id: string, updates: Partial<InsertResume>): Promise<Resume | undefined>;
   deleteResume(id: string): Promise<boolean>;
 }
@@ -59,8 +61,20 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async createResume(resume: InsertResume): Promise<Resume> {
-    const result = await db.insert(resumes).values(resume).returning();
+  async createResume(resume: CreateResume): Promise<Resume> {
+    const result = await db
+      .insert(resumes)
+      .values(resume)
+      .onConflictDoUpdate({
+        target: resumes.id,
+        set: {
+          title: resume.title,
+          template: resume.template ?? "modern",
+          content: resume.content,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return result[0];
   }
 

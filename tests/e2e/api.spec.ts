@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 
 test.describe("API Endpoints", () => {
   let testResumeId: string;
@@ -97,6 +98,48 @@ test.describe("API Endpoints", () => {
       if (created?.id) {
         await request.delete(`/api/resumes/${created.id}`);
       }
+    }
+  });
+
+  test("POST /api/resumes should be idempotent for a client-generated id", async ({
+    request,
+  }) => {
+    const id = randomUUID();
+    const initialData = {
+      id,
+      title: "Idempotent Create Test",
+      template: "modern",
+      content: { fullName: "Idempotent Test User" },
+    };
+    const latestData = {
+      ...initialData,
+      title: "Latest Idempotent Create Test",
+      content: { fullName: "Latest Idempotent Test User" },
+    };
+
+    try {
+      const firstResponse = await request.post("/api/resumes", {
+        data: initialData,
+      });
+      const retryResponse = await request.post("/api/resumes", {
+        data: latestData,
+      });
+
+      expect(firstResponse.status()).toBe(201);
+      expect(retryResponse.status()).toBe(201);
+      expect((await firstResponse.json()).id).toBe(id);
+      const retried = await retryResponse.json();
+      expect(retried.id).toBe(id);
+      expect(retried.title).toBe(latestData.title);
+      expect(retried.content).toEqual(latestData.content);
+
+      const listResponse = await request.get("/api/resumes");
+      const allResumes = await listResponse.json();
+      expect(
+        allResumes.filter((resume: { id: string }) => resume.id === id),
+      ).toHaveLength(1);
+    } finally {
+      await request.delete(`/api/resumes/${id}`);
     }
   });
 

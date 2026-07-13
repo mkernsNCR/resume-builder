@@ -52,8 +52,10 @@ type SaveRequest = {
   template: string;
   title: string;
   resumeId: string | null;
+  createId: string | null;
   editorVersion: number;
   showToast?: boolean;
+  signal?: AbortSignal;
 };
 
 function getAutosaveFingerprint(
@@ -81,6 +83,20 @@ export default function Home() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
   const pendingSaveRef = useRef<SaveRequest | null>(null);
+  const activeSaveControllerRef = useRef<AbortController | null>(null);
+  const createResumeIdRef = useRef<string | null>(null);
+
+  const advanceEditorGeneration = () => {
+    editorVersionRef.current += 1;
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    createResumeIdRef.current = null;
+    activeSaveControllerRef.current?.abort();
+    activeSaveControllerRef.current = null;
+  };
 
   // Fetch all resumes
   const { data: resumes, isLoading: loadingResumes } = useQuery<Resume[]>({
@@ -95,23 +111,32 @@ export default function Home() {
           title: data.title,
           content: data.content,
           template: data.template,
-        });
+        }, data.signal);
       } else {
+        if (!data.createId) {
+          throw new Error("Missing create request ID");
+        }
         return apiRequest("POST", "/api/resumes", {
+          id: data.createId,
           title: data.title,
           content: data.content,
           template: data.template,
-        });
+        }, data.signal);
       }
     },
     onSuccess: async (response, variables) => {
       const result = await response.json();
+      const isCurrentGeneration =
+        variables.editorVersion === editorVersionRef.current;
       if (
         !variables.resumeId &&
-        variables.editorVersion === editorVersionRef.current &&
+        isCurrentGeneration &&
         !currentResumeIdRef.current
       ) {
         currentResumeIdRef.current = result.id;
+        if (createResumeIdRef.current === variables.createId) {
+          createResumeIdRef.current = null;
+        }
         setCurrentResumeId(result.id);
         // mutateAsync resolves only after onSuccess completes, so this ID is
         // applied before the queue dequeues a follow-up create request. Keep
@@ -121,17 +146,24 @@ export default function Home() {
           pendingSaveRef.current.editorVersion === variables.editorVersion
         ) {
           pendingSaveRef.current.resumeId = result.id;
+          pendingSaveRef.current.createId = null;
         }
       }
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      if (variables.showToast !== false) {
+      if (isCurrentGeneration && variables.showToast !== false) {
         toast({
           title: "Resume saved",
           description: "Your changes have been saved successfully.",
         });
       }
     },
-    onError: () => {
+    onError: (_error, variables) => {
+      if (
+        variables.showToast === false ||
+        variables.editorVersion !== editorVersionRef.current
+      ) {
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to save resume. Please try again.",
@@ -178,9 +210,8 @@ export default function Home() {
         }));
         
         // Create a new resume with the parsed content
-        editorVersionRef.current += 1;
+        advanceEditorGeneration();
         currentResumeIdRef.current = null;
-        pendingSaveRef.current = null;
         setCurrentResumeId(null);
       }
       
@@ -210,9 +241,8 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       // If we deleted the current resume, reset to new
       if (deletedId === currentResumeId) {
-        editorVersionRef.current += 1;
+        advanceEditorGeneration();
         currentResumeIdRef.current = null;
-        pendingSaveRef.current = null;
         setCurrentResumeId(null);
         setContent(defaultContent);
         setExtractedText("");
@@ -261,16 +291,29 @@ export default function Home() {
       while (pendingSaveRef.current) {
         const request = pendingSaveRef.current;
         pendingSaveRef.current = null;
+        if (request.editorVersion !== editorVersionRef.current) {
+          continue;
+        }
+
+        const controller = new AbortController();
+        activeSaveControllerRef.current = controller;
         try {
-          await saveResume(request);
+          await saveResume({ ...request, signal: controller.signal });
         } catch {
-          // The mutation's onError callback displays the failure to the user.
-          // Retain this value for the next save trigger unless a newer edit
-          // was queued while the failed request was in flight.
-          if (!pendingSaveRef.current) {
-            pendingSaveRef.current = request;
+          if (request.editorVersion !== editorVersionRef.current) {
+            continue;
           }
+          // A newer edit supersedes the failed value and should be processed
+          // immediately. Otherwise retain this value for the next trigger.
+          if (pendingSaveRef.current) {
+            continue;
+          }
+          pendingSaveRef.current = request;
           break;
+        } finally {
+          if (activeSaveControllerRef.current === controller) {
+            activeSaveControllerRef.current = null;
+          }
         }
       }
     } finally {
@@ -287,11 +330,16 @@ export default function Home() {
     const title = content.fullName 
       ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
       : "Untitled Resume";
+    const resumeId = currentResumeIdRef.current;
+    if (!resumeId && !createResumeIdRef.current) {
+      createResumeIdRef.current = crypto.randomUUID();
+    }
     pendingSaveRef.current = {
       content,
       template,
       title,
-      resumeId: currentResumeIdRef.current,
+      resumeId,
+      createId: resumeId ? null : createResumeIdRef.current,
       editorVersion: editorVersionRef.current,
       showToast: opts?.showToast,
     };
@@ -533,8 +581,7 @@ export default function Home() {
       nextContent,
       nextTemplate,
     );
-    editorVersionRef.current += 1;
-    pendingSaveRef.current = null;
+    advanceEditorGeneration();
     currentResumeIdRef.current = resume.id;
     setCurrentResumeId(resume.id);
     setContent(nextContent);
@@ -546,8 +593,7 @@ export default function Home() {
       defaultContent,
       "modern",
     );
-    editorVersionRef.current += 1;
-    pendingSaveRef.current = null;
+    advanceEditorGeneration();
     currentResumeIdRef.current = null;
     setCurrentResumeId(null);
     setContent(defaultContent);
@@ -888,8 +934,7 @@ export default function Home() {
                           onClick={() => {
                             skipAutosaveFingerprintRef.current =
                               getAutosaveFingerprint(defaultContent, template);
-                            editorVersionRef.current += 1;
-                            pendingSaveRef.current = null;
+                            advanceEditorGeneration();
                             currentResumeIdRef.current = null;
                             setContent(defaultContent);
                             setCurrentResumeId(null);

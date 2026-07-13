@@ -82,6 +82,10 @@ const updateResumeSchema = z.object({
   content: resumeContentSchema.optional(),
 });
 
+const createResumeSchema = insertResumeSchema.extend({
+  id: z.string().uuid().optional(),
+});
+
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
   let parser: { load: () => Promise<void>; getText: () => Promise<{ pages: { text: string }[] }>; destroy: () => Promise<void> } | null = null;
@@ -149,7 +153,7 @@ export async function registerRoutes(
   // Create resume
   app.post("/api/resumes", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const validationResult = insertResumeSchema.safeParse(req.body);
+      const validationResult = createResumeSchema.safeParse(req.body);
       if (!validationResult.success) {
         throw ApiError.badRequest("Invalid resume data", "VALIDATION_ERROR");
       }
