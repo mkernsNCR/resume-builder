@@ -21,7 +21,8 @@ export default defineConfig({
   webServer: {
     command: "tsx server/index.ts",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer:
+      !process.env.CI && process.env.PLAYWRIGHT_REUSE_SERVER === "true",
     timeout: 120 * 1000,
     env: {
       NODE_ENV: "test",
