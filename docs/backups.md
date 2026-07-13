@@ -75,10 +75,10 @@ not assume the application process's variables are available:
 
 ### Weekly Full Backups
 
-Install this entry in the `postgres` operating-system account's crontab when
-local peer authentication is enabled. Otherwise, configure a mode-`0600`
-`.pgpass` for the account running the job. The `-w` flag makes the unattended
-job fail instead of waiting for a password prompt:
+Configure a mode-`0600` `.pgpass` for the account running this job. Because
+`-h localhost` forces a TCP connection, peer authentication does not apply.
+The `-w` flag makes the unattended job fail instead of waiting for a password
+prompt:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -151,6 +151,8 @@ Periodically verify backups by restoring to a test database:
 ```bash
 export MAINTENANCE_DATABASE_URL=postgresql://username@db-host:5432/postgres
 export TEST_DATABASE_URL=postgresql://username@db-host:5432/resume_builder_test
+dropdb --maintenance-db="$MAINTENANCE_DATABASE_URL" \
+  --if-exists resume_builder_test
 createdb --maintenance-db="$MAINTENANCE_DATABASE_URL" resume_builder_test
 pg_restore --exit-on-error --dbname="$TEST_DATABASE_URL" backup_20250101_020000.dump
 psql "$TEST_DATABASE_URL" --set=ON_ERROR_STOP=1 <<'SQL'
