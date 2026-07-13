@@ -212,22 +212,25 @@ export async function registerRoutes(
   });
 
   // Duplicate resume
-  app.post("/api/resumes/:id/duplicate", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const original = await storage.getResume(req.params.id as string);
-      if (!original) {
-        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+  app.post(
+    "/api/resumes/:id/duplicate",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const original = await storage.getResume(req.params.id as string);
+        if (!original) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        const duplicate = await storage.createResume({
+          title: `${original.title} (Copy)`,
+          template: original.template,
+          content: original.content,
+        });
+        res.status(201).json(duplicate);
+      } catch (error) {
+        next(error);
       }
-      const duplicate = await storage.createResume({
-        title: `${original.title} (Copy)`,
-        template: original.template,
-        content: original.content,
-      });
-      res.status(201).json(duplicate);
-    } catch (error) {
-      next(error);
-    }
-  });
+    },
+  );
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {

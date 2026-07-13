@@ -676,38 +676,42 @@ export default function Home() {
                       </div>
                     ) : resumes && resumes.length > 0 ? (
                       resumes.map((resume) => (
-                        <button
-                          type="button"
+                        <div
                           key={resume.id}
-                          className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                          className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md text-left w-full ${
                             currentResumeId === resume.id
                               ? "bg-background border-primary/50 shadow-sm ring-1 ring-primary/20"
                               : "bg-card border-transparent hover:border-border/50 hover:bg-card/80"
                           }`}
-                          onClick={() => {
-                            loadResume(resume);
-                            setMobileSidebarOpen(false);
-                          }}
-                          data-testid={`resume-card-mobile-${resume.id}`}
                         >
-                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                            currentResumeId === resume.id
-                              ? "bg-primary/10 border-primary/20 text-primary"
-                              : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
-                          }`}>
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
-                              currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                          <button
+                            type="button"
+                            className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer"
+                            onClick={() => {
+                              loadResume(resume);
+                              setMobileSidebarOpen(false);
+                            }}
+                            data-testid={`resume-card-mobile-${resume.id}`}
+                          >
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                              currentResumeId === resume.id
+                                ? "bg-primary/10 border-primary/20 text-primary"
+                                : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
                             }`}>
-                              {resume.title || "Untitled Resume"}
-                            </h3>
-                            <p className="text-[11px] text-muted-foreground/80 truncate">
-                              Edited {new Date(resume.updatedAt).toLocaleDateString()}
-                            </p>
-                          </div>
+                              <FileText className="h-5 w-5" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
+                                currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                              }`}>
+                                {resume.title || "Untitled Resume"}
+                              </h3>
+                              <p className="text-[11px] text-muted-foreground/80 truncate">
+                                Edited {new Date(resume.updatedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </button>
 
                           <Button
                             variant="ghost"
@@ -736,7 +740,7 @@ export default function Home() {
                               <Trash2 className="w-4 h-4" />
                             )}
                           </Button>
-                        </button>
+                        </div>
                       ))
                     ) : (
                       <div className="text-center py-12 px-4 border-2 border-dashed rounded-xl border-muted-foreground/20">
@@ -815,35 +819,39 @@ export default function Home() {
                 </div>
               ) : resumes && resumes.length > 0 ? (
                 resumes.map((resume) => (
-                  <button
-                    type="button"
+                  <div
                     key={resume.id}
-                    className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer text-left w-full ${
+                    className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:shadow-md text-left w-full ${
                       currentResumeId === resume.id
                         ? "bg-background border-primary/50 shadow-sm ring-1 ring-primary/20"
                         : "bg-card border-transparent hover:border-border/50 hover:bg-card/80"
                     }`}
-                    onClick={() => loadResume(resume)}
-                    data-testid={`resume-card-${resume.id}`}
                   >
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                      currentResumeId === resume.id
-                        ? "bg-primary/10 border-primary/20 text-primary"
-                        : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
-                    }`}>
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
-                        currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                    <button
+                      type="button"
+                      className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer"
+                      onClick={() => loadResume(resume)}
+                      data-testid={`resume-card-${resume.id}`}
+                    >
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                        currentResumeId === resume.id
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
                       }`}>
-                        {resume.title || "Untitled Resume"}
-                      </h3>
-                      <p className="text-[11px] text-muted-foreground/80 truncate">
-                        Edited {new Date(resume.updatedAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                        <FileText className="h-5 w-5" />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
+                          currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                        }`}>
+                          {resume.title || "Untitled Resume"}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground/80 truncate">
+                          Edited {new Date(resume.updatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </button>
 
                     <Button
                       variant="ghost"
@@ -872,7 +880,7 @@ export default function Home() {
                         <Trash2 className="w-4 h-4" />
                       )}
                     </Button>
-                  </button>
+                  </div>
                 ))
               ) : (
                 <div className="text-center py-12 px-4 border-2 border-dashed rounded-xl border-muted-foreground/20">

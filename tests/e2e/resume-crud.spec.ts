@@ -94,6 +94,52 @@ test.describe("Resume CRUD Operations", () => {
     await expect(page.getByTestId(`resume-card-${resumeId}`)).toHaveCount(0);
   });
 
+  test("should duplicate a resume from the sidebar", async ({ page, request }) => {
+    const sourceTitle = `Duplicate Button Test ${Date.now()}`;
+    const createResponse = await request.post("/api/resumes", {
+      data: {
+        title: sourceTitle,
+        template: "minimal",
+        content: {
+          fullName: "Duplicate Button Test",
+        },
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    const source = await createResponse.json();
+    let duplicateId: string | undefined;
+
+    try {
+      await page.goto("/");
+
+      const sourceCard = page.getByTestId(`resume-card-${source.id}`);
+      await expect(sourceCard).toBeVisible({ timeout: 10000 });
+      await page.getByTestId(`button-duplicate-resume-${source.id}`).click();
+
+      await expect(
+        page.getByText("Resume duplicated", { exact: true }),
+      ).toBeVisible({ timeout: 5000 });
+      await expect
+        .poll(async () => {
+          const response = await request.get("/api/resumes");
+          const resumes = await response.json();
+          const duplicate = resumes.find(
+            (resume: { id: string; title: string }) =>
+              resume.id !== source.id && resume.title === `${sourceTitle} (Copy)`,
+          );
+          duplicateId = duplicate?.id;
+          return duplicateId;
+        })
+        .toBeTruthy();
+      await expect(page.getByTestId(`resume-card-${duplicateId}`)).toBeVisible();
+    } finally {
+      await request.delete(`/api/resumes/${source.id}`);
+      if (duplicateId) {
+        await request.delete(`/api/resumes/${duplicateId}`);
+      }
+    }
+  });
+
   test("should show most recently created resume at top of sidebar", async ({ request, page }) => {
     // Create a resume via API
     const createResponse = await request.post("/api/resumes", {
