@@ -95,6 +95,67 @@ test.describe("API Endpoints", () => {
     });
   });
 
+  test("POST /api/resumes/:id/match should compare a persisted resume", async ({
+    request,
+  }) => {
+    const createResponse = await request.post("/api/resumes", {
+      data: {
+        title: "API Engineer Match Test",
+        template: "modern",
+        content: {
+          fullName: "Match Test User",
+          title: "API Engineer",
+          skills: [{ id: "skill-1", name: "TypeScript" }],
+        },
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    const created = await createResponse.json();
+
+    try {
+      const response = await request.post(`/api/resumes/${created.id}/match`, {
+        data: {
+          jobDescription:
+            "Seeking an API engineer with TypeScript and software experience.",
+        },
+      });
+
+      expect(response.status()).toBe(200);
+      const result = await response.json();
+      expect(result.matchScore).toBeGreaterThan(0);
+      expect(result.matchScore).toBeLessThanOrEqual(100);
+      expect(result.matchedKeywords).toEqual(
+        expect.arrayContaining(["api", "engineer", "typescript"]),
+      );
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    } finally {
+      await request.delete(`/api/resumes/${created.id}`);
+    }
+  });
+
+  test("POST /api/resumes/:id/match should reject an empty job description", async ({
+    request,
+  }) => {
+    const response = await request.post(`/api/resumes/${testResumeId}/match`, {
+      data: { jobDescription: "   " },
+    });
+
+    expect(response.status()).toBe(400);
+    expect((await response.json()).code).toBe("VALIDATION_ERROR");
+  });
+
+  test("POST /api/resumes/:id/match should return 404 for a missing resume", async ({
+    request,
+  }) => {
+    const response = await request.post(
+      "/api/resumes/non-existent-id-12345/match",
+      { data: { jobDescription: "React engineer" } },
+    );
+
+    expect(response.status()).toBe(404);
+    expect((await response.json()).code).toBe("RESUME_NOT_FOUND");
+  });
+
   test("POST /api/resumes should create new resume", async ({ request }) => {
     const newResume = {
       title: "E2E Test Resume",

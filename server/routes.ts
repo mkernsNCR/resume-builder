@@ -88,6 +88,10 @@ const createResumeSchema = insertResumeSchema.extend({
   id: z.string().uuid().optional(),
 });
 
+const jobMatchSchema = z.object({
+  jobDescription: z.string().trim().min(1).max(50_000),
+});
+
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
   let parser: { load: () => Promise<void>; getText: () => Promise<{ pages: { text: string }[] }>; destroy: () => Promise<void> } | null = null;
@@ -251,22 +255,32 @@ export async function registerRoutes(
   );
 
   // Match resume against job description
-  app.post("/api/resumes/:id/match", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const resume = await storage.getResume(req.params.id as string);
-      if (!resume) {
-        throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+  app.post(
+    "/api/resumes/:id/match",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const resume = await storage.getResume(req.params.id as string);
+        if (!resume) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        const validationResult = jobMatchSchema.safeParse(req.body);
+        if (!validationResult.success) {
+          throw ApiError.badRequest(
+            "jobDescription is required and must not exceed 50000 characters",
+            "VALIDATION_ERROR",
+          );
+        }
+        res.json(
+          matchJobDescription(
+            resume.content,
+            validationResult.data.jobDescription,
+          ),
+        );
+      } catch (error) {
+        next(error);
       }
-      const { jobDescription } = req.body as { jobDescription?: string };
-      if (!jobDescription || jobDescription.trim().length === 0) {
-        throw ApiError.badRequest("jobDescription is required", "VALIDATION_ERROR");
-      }
-      const result = matchJobDescription(resume.content as ResumeContent, jobDescription);
-      res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  });
+    },
+  );
 
   // Upload file and extract text
   app.post("/api/upload", upload.single("file"), async (req: Request, res: Response, next: NextFunction) => {
