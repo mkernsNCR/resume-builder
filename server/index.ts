@@ -6,6 +6,8 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { env } from "./env";
 import { ApiError } from "./api-error";
+import { attachUser, sessionMiddleware } from "./auth";
+import { registerAuthRoutes } from "./auth-routes";
 
 const isTestEnv = env.NODE_ENV === "test";
 
@@ -88,7 +90,11 @@ app.use((req, res, next) => {
 app.use("/api", apiLimiter);
 app.use("/api/upload", uploadLimiter);
 
+app.use(sessionMiddleware);
+app.use(attachUser);
+
 (async () => {
+  registerAuthRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {

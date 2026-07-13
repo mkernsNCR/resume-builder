@@ -12,7 +12,7 @@ import {
 } from "@shared/schema";
 import { env } from "./env";
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: env.DATABASE_URL,
 });
 
