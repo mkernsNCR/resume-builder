@@ -12,6 +12,10 @@ export interface SectionScore {
   feedback: string[];
 }
 
+function hasText(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 export function scoreResume(content: ResumeContent): ResumeScore {
   const sections: SectionScore[] = [
     scorePersonalInfo(content),
@@ -31,13 +35,13 @@ function scorePersonalInfo(content: ResumeContent): SectionScore {
   let score = 0;
   const maxScore = 20;
 
-  if (content.fullName && content.fullName.trim().length > 0) {
+  if (hasText(content.fullName)) {
     score += 5;
   } else {
     feedback.push("Add your full name.");
   }
 
-  if (content.title && content.title.trim().length > 0) {
+  if (hasText(content.title)) {
     score += 3;
   } else {
     feedback.push("Add a professional title (e.g., 'Senior Software Engineer').");
@@ -45,19 +49,19 @@ function scorePersonalInfo(content: ResumeContent): SectionScore {
 
   const contact = content.contact;
   if (contact) {
-    if (contact.email && contact.email.trim().length > 0) score += 3;
+    if (hasText(contact.email)) score += 3;
     else feedback.push("Add an email address.");
 
-    if (contact.phone && contact.phone.trim().length > 0) score += 2;
+    if (hasText(contact.phone)) score += 2;
     else feedback.push("Add a phone number.");
 
-    if (contact.location && contact.location.trim().length > 0) score += 2;
+    if (hasText(contact.location)) score += 2;
     else feedback.push("Add your location.");
 
-    if (contact.linkedin && contact.linkedin.trim().length > 0) score += 3;
+    if (hasText(contact.linkedin)) score += 3;
     else feedback.push("Add a LinkedIn profile URL.");
 
-    if (contact.website && contact.website.trim().length > 0) score += 2;
+    if (hasText(contact.website)) score += 2;
     else feedback.push("Consider adding a personal website or portfolio.");
   } else {
     feedback.push("Add contact information including email, phone, and location.");
@@ -71,7 +75,7 @@ function scoreSummary(content: ResumeContent): SectionScore {
   let score = 0;
   const maxScore = 15;
 
-  const summary = content.summary?.trim() || "";
+  const summary = hasText(content.summary) ? content.summary.trim() : "";
 
   if (summary.length === 0) {
     feedback.push("Add a professional summary to highlight your value proposition.");
@@ -129,7 +133,7 @@ function scoreExperience(content: ResumeContent): SectionScore {
 
   for (const exp of experience) {
     if (exp.highlights && exp.highlights.length > 0) entriesWithHighlights++;
-    if (exp.description && exp.description.trim().length > 0) entriesWithDescription++;
+    if (hasText(exp.description)) entriesWithDescription++;
   }
 
   if (entriesWithHighlights === experience.length) {
@@ -175,7 +179,7 @@ function scoreEducation(content: ResumeContent): SectionScore {
     score += 1;
   }
 
-  const allHaveField = education.every((e) => e.field && e.field.trim().length > 0);
+  const allHaveField = education.every((e) => hasText(e.field));
   if (allHaveField) {
     score += 2;
   } else {
@@ -243,7 +247,7 @@ function scoreProjects(content: ResumeContent): SectionScore {
     score += 1;
   }
 
-  const withDescription = projects.filter((p) => p.description && p.description.trim().length > 0);
+  const withDescription = projects.filter((p) => hasText(p.description));
   if (withDescription.length === projects.length) {
     score += 2;
   } else {
