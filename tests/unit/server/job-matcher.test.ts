@@ -68,6 +68,12 @@ describe("matchJobDescription", () => {
     expect(result.suggestions.some((s) => s.includes("skills"))).toBe(true);
   });
 
+  it("suggests adding skills when the skills array is omitted", () => {
+    const noSkills: ResumeContent = { ...content, skills: undefined };
+    const result = matchJobDescription(noSkills, "React developer needed");
+    expect(result.suggestions.some((s) => s.includes("skills"))).toBe(true);
+  });
+
   it("suggests adding summary when missing or too short", () => {
     const noSummary: ResumeContent = { ...content, summary: "" };
     const result = matchJobDescription(noSummary, "React developer needed");
@@ -88,5 +94,30 @@ describe("matchJobDescription", () => {
     expect(result.matchedKeywords).toContain("latency");
     expect(result.matchedKeywords).toContain("web");
     expect(result.matchedKeywords).toContain("applications");
+  });
+
+  it("preserves short and symbolic technical terms", () => {
+    const technicalContent: ResumeContent = {
+      ...content,
+      skills: ["C#", "C++", "Go", "AI", "UI", "UX"].map((name, index) => ({
+        id: `technical-skill-${index}`,
+        name,
+      })),
+    };
+
+    const result = matchJobDescription(
+      technicalContent,
+      "Seeking experience with C#, C++, Go, AI, UI, and UX.",
+    );
+
+    expect(result.matchedKeywords).toEqual([
+      "ai",
+      "c#",
+      "c++",
+      "go",
+      "ui",
+      "ux",
+    ]);
+    expect(result.missingKeywords).toEqual(["experience", "seeking"]);
   });
 });

@@ -24,12 +24,30 @@ const STOP_WORDS = new Set([
   "etc", "eg", "ie", "per", "via", "vs",
 ]);
 
+const PROTECTED_TECH_TERMS = new Set([
+  "c#",
+  "c++",
+  "go",
+  "ai",
+  "ui",
+  "ux",
+]);
+
 function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^\w\s-]/g, " ")
+    .replace(/[^\w\s#+-]/g, " ")
     .split(/\s+/)
-    .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
+    .map((token) =>
+      PROTECTED_TECH_TERMS.has(token)
+        ? token
+        : token.replace(/^[#+-]+|[#+-]+$/g, ""),
+    )
+    .filter(
+      (token) =>
+        (token.length > 2 || PROTECTED_TECH_TERMS.has(token)) &&
+        !STOP_WORDS.has(token),
+    );
 }
 
 function extractKeywords(text: string): Set<string> {
@@ -124,7 +142,7 @@ export function matchJobDescription(
     );
   }
 
-  if (content.skills && content.skills.length < 5) {
+  if ((content.skills?.length ?? 0) < 5) {
     suggestions.push("Add more skills to your resume to improve keyword matching.");
   }
 
