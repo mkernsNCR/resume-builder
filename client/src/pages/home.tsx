@@ -79,6 +79,9 @@ export default function Home() {
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("upload");
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
+  const [duplicatingResumeIds, setDuplicatingResumeIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -278,10 +281,13 @@ export default function Home() {
     mutationFn: async (id: string) => {
       return apiRequest("POST", `/api/resumes/${id}/duplicate`);
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response, sourceId) => {
       const result = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      loadResume(result);
+      if (currentResumeIdRef.current === sourceId) {
+        loadResume(result);
+        setMobileSidebarOpen(false);
+      }
       toast({
         title: "Resume duplicated",
         description: "A copy has been created successfully.",
@@ -294,6 +300,13 @@ export default function Home() {
         variant: "destructive",
       });
     },
+    onSettled: (_data, _error, sourceId) => {
+      setDuplicatingResumeIds((current) => {
+        const next = new Set(current);
+        next.delete(sourceId);
+        return next;
+      });
+    },
   });
 
   const handleDuplicateResume = (
@@ -301,6 +314,11 @@ export default function Home() {
     resumeId: string
   ) => {
     e.stopPropagation();
+    setDuplicatingResumeIds((current) => {
+      const next = new Set(current);
+      next.add(resumeId);
+      return next;
+    });
     duplicateMutation.mutate(resumeId);
   };
 
@@ -718,11 +736,15 @@ export default function Home() {
                             size="icon"
                             className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-foreground hover:bg-muted -mr-0.5 transition-all"
                             onClick={(e) => handleDuplicateResume(e, resume.id)}
-                            disabled={duplicateMutation.isPending}
+                            disabled={duplicatingResumeIds.has(resume.id)}
                             data-testid={`button-duplicate-resume-mobile-${resume.id}`}
                             aria-label={`Duplicate ${resume.title || "Untitled Resume"}`}
                           >
-                            <Copy className="w-4 h-4" />
+                            {duplicatingResumeIds.has(resume.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
                           </Button>
 
                           <Button
@@ -858,11 +880,15 @@ export default function Home() {
                       size="icon"
                       className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-foreground hover:bg-muted -mr-0.5 transition-all"
                       onClick={(e) => handleDuplicateResume(e, resume.id)}
-                      disabled={duplicateMutation.isPending}
+                      disabled={duplicatingResumeIds.has(resume.id)}
                       data-testid={`button-duplicate-resume-${resume.id}`}
                       aria-label={`Duplicate ${resume.title || "Untitled Resume"}`}
                     >
-                      <Copy className="w-4 h-4" />
+                      {duplicatingResumeIds.has(resume.id) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
                     </Button>
 
                     <Button
