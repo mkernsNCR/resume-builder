@@ -146,6 +146,66 @@ test.describe("API Endpoints", () => {
     }
   });
 
+  test("POST /api/resumes/:id/duplicate should create an independent copy", async ({
+    request,
+  }) => {
+    const sourceResponse = await request.post("/api/resumes", {
+      data: {
+        title: "Resume To Duplicate",
+        template: "creative",
+        content: {
+          fullName: "Duplicate Test",
+          title: "Product Designer",
+          skills: [{ id: "skill-1", name: "Figma", level: "expert" }],
+        },
+      },
+    });
+    expect(sourceResponse.status()).toBe(201);
+    const source = await sourceResponse.json();
+    let duplicateId: string | undefined;
+
+    try {
+      const response = await request.post(
+        `/api/resumes/${source.id}/duplicate`,
+      );
+
+      expect(response.status()).toBe(201);
+      const duplicate = await response.json();
+      duplicateId = duplicate.id;
+      expect(duplicate.id).not.toBe(source.id);
+      expect(duplicate.title).toBe("Resume To Duplicate (Copy)");
+      expect(duplicate.template).toBe(source.template);
+      expect(duplicate.content).toEqual(source.content);
+
+      await request.put(`/api/resumes/${source.id}`, {
+        data: { title: "Updated Source" },
+      });
+      const persistedCopy = await request.get(`/api/resumes/${duplicate.id}`);
+      expect((await persistedCopy.json()).title).toBe(
+        "Resume To Duplicate (Copy)",
+      );
+    } finally {
+      await request.delete(`/api/resumes/${source.id}`);
+      if (duplicateId) {
+        await request.delete(`/api/resumes/${duplicateId}`);
+      }
+    }
+  });
+
+  test("POST /api/resumes/:id/duplicate should return 404 for a missing resume", async ({
+    request,
+  }) => {
+    const response = await request.post(
+      "/api/resumes/non-existent-id-12345/duplicate",
+    );
+
+    expect(response.status()).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      code: "RESUME_NOT_FOUND",
+      message: "Resume not found",
+    });
+  });
+
   test("PUT /api/resumes/:id should update resume", async ({ request }) => {
     // Create isolated resume for this test
     const createResponse = await request.post("/api/resumes", {
