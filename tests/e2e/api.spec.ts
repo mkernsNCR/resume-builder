@@ -127,12 +127,14 @@ test.describe("API Endpoints", () => {
 
       expect(firstResponse.status()).toBe(201);
       expect(retryResponse.status()).toBe(201);
-      expect((await firstResponse.json()).id).toBe(id);
+      const first = await firstResponse.json();
       const retried = await retryResponse.json();
+      expect(first.id).toBe(id);
       expect(retried.id).toBe(id);
       expect(retried.title).toBe(latestData.title);
       expect(retried.content).toEqual(latestData.content);
       expect(retried.template).toBe(initialData.template);
+      expect(retried.createdAt).toBe(first.createdAt);
 
       const listResponse = await request.get("/api/resumes");
       const allResumes = await listResponse.json();
