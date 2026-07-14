@@ -30,6 +30,9 @@ const allowlist = [
   "mammoth",
 ];
 
+// Keep pdfkit external: it loads its packaged AFM font data relative to the
+// module directory at runtime, which is lost when the module is bundled.
+
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
