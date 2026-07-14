@@ -177,6 +177,7 @@ function scoreEducation(content: ResumeContent): SectionScore {
     score += 3;
   } else {
     score += 1;
+    feedback.push("Add another education entry to strengthen this section.");
   }
 
   const allHaveField = education.every((e) => hasText(e.field));
@@ -214,6 +215,9 @@ function scoreSkills(content: ResumeContent): SectionScore {
     score += 3;
   } else {
     score += 1;
+    if (skills.length >= 5) {
+      feedback.push("Add at least 10 skills to demonstrate broader expertise.");
+    }
   }
 
   const skillsWithLevel = skills.filter((s) => s.level);
@@ -245,6 +249,7 @@ function scoreProjects(content: ResumeContent): SectionScore {
     score += 3;
   } else {
     score += 1;
+    feedback.push("Add another project to strengthen this section.");
   }
 
   const withDescription = projects.filter((p) => hasText(p.description));

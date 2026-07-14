@@ -134,6 +134,23 @@ describe("scoreResume", () => {
     expect(projects.feedback.length).toBeGreaterThan(0);
   });
 
+  it("explains each partial-credit count tier", () => {
+    const result = scoreResume(fullContent);
+    const education = result.sections.find((s) => s.section === "Education")!;
+    const skills = result.sections.find((s) => s.section === "Skills")!;
+    const projects = result.sections.find((s) => s.section === "Projects")!;
+
+    expect(education.feedback).toContain(
+      "Add another education entry to strengthen this section.",
+    );
+    expect(skills.feedback).toContain(
+      "Add at least 10 skills to demonstrate broader expertise.",
+    );
+    expect(projects.feedback).toContain(
+      "Add another project to strengthen this section.",
+    );
+  });
+
   it("requires a field of study on every education entry for full credit", () => {
     const partialFields = {
       ...fullContent,
