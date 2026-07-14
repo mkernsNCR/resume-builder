@@ -1,5 +1,15 @@
 import type { ResumeContent } from "@shared/schema";
 
+export const EDITOR_TABS = [
+  "personal",
+  "experience",
+  "education",
+  "skills",
+  "projects",
+] as const;
+
+export type EditorTab = (typeof EDITOR_TABS)[number];
+
 export type ResumeHistorySection = "experience" | "education" | "projects";
 
 export type ResumeEditorChangeHandler = (

@@ -21,8 +21,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { FileUpload } from "@/components/file-upload";
 import { ExtractedTextDisplay } from "@/components/extracted-text-display";
-import { ResumeEditor } from "@/components/resume-editor";
+import { EDITOR_TABS, ResumeEditor } from "@/components/resume-editor";
 import type {
+  EditorTab,
   ResumeEditorChangeHandler,
   ResumeHistorySection,
 } from "@/components/resume-editor/types";
@@ -104,12 +105,16 @@ export default function Home() {
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("upload");
+  const [activeEditorTab, setActiveEditorTab] = useState<EditorTab>(
+    EDITOR_TABS[0],
+  );
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
   const [duplicatingResumeIds, setDuplicatingResumeIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const isExportingRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
   const pendingSaveRef = useRef<SaveRequest | null>(null);
@@ -306,6 +311,7 @@ export default function Home() {
       }
 
       // Auto-switch to Edit tab so user can review and edit
+      setActiveEditorTab(EDITOR_TABS[0]);
       setActiveTab("edit");
 
       toast({
@@ -337,6 +343,7 @@ export default function Home() {
         setCurrentResumeId(null);
         resetContent(defaultContent);
         setExtractedText("");
+        setActiveEditorTab(EDITOR_TABS[0]);
       }
       setDeletingResumeId(null);
       toast({
@@ -409,12 +416,13 @@ export default function Home() {
     duplicateMutation.mutate(resumeId);
   };
 
+  const uploadFile = uploadMutation.mutate;
   const handleFileSelect = useCallback((file: File) => {
     setIsUploading(true);
-    uploadMutation.mutate(file, {
+    uploadFile(file, {
       onSettled: () => setIsUploading(false),
     });
-  }, []);
+  }, [uploadFile]);
 
   const handleContentChange: ResumeEditorChangeHandler = useCallback(
     (updates, options) => {
@@ -543,36 +551,10 @@ export default function Home() {
     };
   }, [content, template, handleSave]);
 
-  // Keyboard shortcuts for undo/redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-      const target = e.target instanceof HTMLElement ? e.target : null;
-      const isTyping =
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable === true;
-      const isInsideResumeEditor =
-        target?.closest("[data-resume-editor]") != null;
-      if (!isMod || (isTyping && !isInsideResumeEditor)) return;
-
-      const key = e.key.toLowerCase();
-      if (key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        commitPendingHistory();
-        undo();
-      } else if ((key === "z" && e.shiftKey) || key === "y") {
-        e.preventDefault();
-        commitPendingHistory();
-        redo();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [commitPendingHistory, undo, redo]);
-
   // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
+    if (!content.fullName || isExportingRef.current) return;
+    isExportingRef.current = true;
     setIsExporting(true);
 
     try {
@@ -801,9 +783,60 @@ export default function Home() {
         variant: "destructive",
       });
     } finally {
+      isExportingRef.current = false;
       setIsExporting(false);
     }
-  };
+  }, [content, template, toast]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable === true;
+      const isInsideResumeEditor =
+        target?.closest("[data-resume-editor]") != null;
+      const key = e.key.toLowerCase();
+
+      if (isMod) {
+        if ((!isTyping || isInsideResumeEditor) && key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          commitPendingHistory();
+          undo();
+        } else if (
+          (!isTyping || isInsideResumeEditor) &&
+          ((key === "z" && e.shiftKey) || key === "y")
+        ) {
+          e.preventDefault();
+          commitPendingHistory();
+          redo();
+        } else if (key === "s") {
+          e.preventDefault();
+          handleSave();
+        } else if (key === "e") {
+          e.preventDefault();
+          if (!isExporting) {
+            void handleExportPDF();
+          }
+        }
+        return;
+      }
+
+      // Tab switching with 1-5 (only when not typing)
+      if (!isTyping && e.key >= "1" && e.key <= "5") {
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < EDITOR_TABS.length) {
+          setActiveTab("edit");
+          setActiveEditorTab(EDITOR_TABS[idx]);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [commitPendingHistory, undo, redo, handleSave, handleExportPDF, isExporting]);
 
   const loadResume = (resume: Resume) => {
     const nextContent = resume.content as ResumeContent;
@@ -817,6 +850,7 @@ export default function Home() {
     setCurrentResumeId(resume.id);
     resetContent(nextContent);
     setTemplate(nextTemplate);
+    setActiveEditorTab(EDITOR_TABS[0]);
   };
 
   const createNewResume = () => {
@@ -830,6 +864,7 @@ export default function Home() {
     resetContent(defaultContent);
     setTemplate("modern");
     setExtractedText("");
+    setActiveEditorTab(EDITOR_TABS[0]);
   };
 
   return (
@@ -1250,6 +1285,7 @@ export default function Home() {
                             currentResumeIdRef.current = null;
                             resetContent(defaultContent);
                             setCurrentResumeId(null);
+                            setActiveEditorTab(EDITOR_TABS[0]);
                             setActiveTab("edit");
                           }}
                           data-testid="button-skip-upload"
@@ -1269,6 +1305,8 @@ export default function Home() {
                       content={content}
                       onChange={handleContentChange}
                       onCommit={commitPendingHistory}
+                      activeTab={activeEditorTab}
+                      onTabChange={setActiveEditorTab}
                     />
                   </TabsContent>
 
