@@ -4,13 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import type { ResumeContent, Education } from "@shared/schema";
 import { GraduationCap, Plus, Trash2 } from "lucide-react";
+import type {
+  ResumeEditorChangeHandler,
+  ResumeEditorCommitHandler,
+} from "./types";
 
 interface EducationFormProps {
   content: ResumeContent;
-  onChange: (updates: Partial<ResumeContent>) => void;
+  onChange: ResumeEditorChangeHandler;
+  onCommit: ResumeEditorCommitHandler;
 }
 
-export function EducationForm({ content, onChange }: EducationFormProps) {
+export function EducationForm({
+  content,
+  onChange,
+  onCommit,
+}: EducationFormProps) {
   const educationList = content.education || [];
 
   const addEducation = () => {
@@ -27,12 +36,21 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
     onChange({ education: [...educationList, newEdu] });
   };
 
-  const updateEducation = (id: string, updates: Partial<Education>) => {
+  const updateEducation = (
+    id: string,
+    updates: Partial<Education>,
+    coalesce = false,
+  ) => {
     const updated = educationList.map((edu) =>
-      edu.id === id ? { ...edu, ...updates } : edu
+      edu.id === id ? { ...edu, ...updates } : edu,
     );
-    onChange({ education: updated });
+    onChange(
+      { education: updated },
+      coalesce ? { coalesceKey: "education" } : undefined,
+    );
   };
+
+  const commitTextChange = () => onCommit("education");
 
   const removeEducation = (id: string) => {
     onChange({ education: educationList.filter((edu) => edu.id !== id) });
@@ -97,8 +115,13 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                     <Input
                       value={edu.institution}
                       onChange={(e) =>
-                        updateEducation(edu.id, { institution: e.target.value })
+                        updateEducation(
+                          edu.id,
+                          { institution: e.target.value },
+                          true,
+                        )
                       }
+                      onBlur={commitTextChange}
                       placeholder="University Name"
                       data-testid={`input-institution-${index}`}
                     />
@@ -108,8 +131,13 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                     <Input
                       value={edu.degree}
                       onChange={(e) =>
-                        updateEducation(edu.id, { degree: e.target.value })
+                        updateEducation(
+                          edu.id,
+                          { degree: e.target.value },
+                          true,
+                        )
                       }
+                      onBlur={commitTextChange}
                       placeholder="Bachelor of Science"
                       data-testid={`input-degree-${index}`}
                     />
@@ -119,8 +147,9 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                     <Input
                       value={edu.field || ""}
                       onChange={(e) =>
-                        updateEducation(edu.id, { field: e.target.value })
+                        updateEducation(edu.id, { field: e.target.value }, true)
                       }
+                      onBlur={commitTextChange}
                       placeholder="Computer Science"
                       data-testid={`input-field-${index}`}
                     />
@@ -130,8 +159,9 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                     <Input
                       value={edu.gpa || ""}
                       onChange={(e) =>
-                        updateEducation(edu.id, { gpa: e.target.value })
+                        updateEducation(edu.id, { gpa: e.target.value }, true)
                       }
+                      onBlur={commitTextChange}
                       placeholder="3.8/4.0"
                       data-testid={`input-gpa-${index}`}
                     />
@@ -141,8 +171,13 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                     <Input
                       value={edu.startDate}
                       onChange={(e) =>
-                        updateEducation(edu.id, { startDate: e.target.value })
+                        updateEducation(
+                          edu.id,
+                          { startDate: e.target.value },
+                          true,
+                        )
                       }
+                      onBlur={commitTextChange}
                       placeholder="Sep 2018"
                       data-testid={`input-edu-start-date-${index}`}
                     />
@@ -152,8 +187,13 @@ export function EducationForm({ content, onChange }: EducationFormProps) {
                     <Input
                       value={edu.endDate || ""}
                       onChange={(e) =>
-                        updateEducation(edu.id, { endDate: e.target.value })
+                        updateEducation(
+                          edu.id,
+                          { endDate: e.target.value },
+                          true,
+                        )
                       }
+                      onBlur={commitTextChange}
                       placeholder="May 2022"
                       data-testid={`input-edu-end-date-${index}`}
                     />

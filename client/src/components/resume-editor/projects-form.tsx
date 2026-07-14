@@ -5,13 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import type { ResumeContent, Project } from "@shared/schema";
 import { FolderKanban, Plus, Trash2 } from "lucide-react";
+import type {
+  ResumeEditorChangeHandler,
+  ResumeEditorCommitHandler,
+} from "./types";
 
 interface ProjectsFormProps {
   content: ResumeContent;
-  onChange: (updates: Partial<ResumeContent>) => void;
+  onChange: ResumeEditorChangeHandler;
+  onCommit: ResumeEditorCommitHandler;
 }
 
-export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
+export function ProjectsForm({
+  content,
+  onChange,
+  onCommit,
+}: ProjectsFormProps) {
   const projects = content.projects || [];
 
   const addProject = () => {
@@ -25,12 +34,21 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
     onChange({ projects: [...projects, newProject] });
   };
 
-  const updateProject = (id: string, updates: Partial<Project>) => {
+  const updateProject = (
+    id: string,
+    updates: Partial<Project>,
+    coalesce = false,
+  ) => {
     const updated = projects.map((project) =>
-      project.id === id ? { ...project, ...updates } : project
+      project.id === id ? { ...project, ...updates } : project,
     );
-    onChange({ projects: updated });
+    onChange(
+      { projects: updated },
+      coalesce ? { coalesceKey: "projects" } : undefined,
+    );
   };
+
+  const commitTextChange = () => onCommit("projects");
 
   const removeProject = (id: string) => {
     onChange({ projects: projects.filter((project) => project.id !== id) });
@@ -50,7 +68,7 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
     if (project && project.highlights) {
       const newHighlights = [...project.highlights];
       newHighlights[index] = value;
-      updateProject(projectId, { highlights: newHighlights });
+      updateProject(projectId, { highlights: newHighlights }, true);
     }
   };
 
@@ -122,8 +140,13 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                     <Input
                       value={project.name || ""}
                       onChange={(e) =>
-                        updateProject(project.id, { name: e.target.value })
+                        updateProject(
+                          project.id,
+                          { name: e.target.value },
+                          true,
+                        )
                       }
+                      onBlur={commitTextChange}
                       placeholder="Project Name"
                       data-testid={`input-project-name-${index}`}
                     />
@@ -133,8 +156,9 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                     <Input
                       value={project.url || ""}
                       onChange={(e) =>
-                        updateProject(project.id, { url: e.target.value })
+                        updateProject(project.id, { url: e.target.value }, true)
                       }
+                      onBlur={commitTextChange}
                       placeholder="github.com/username/project"
                       data-testid={`input-project-url-${index}`}
                     />
@@ -146,8 +170,13 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                   <Textarea
                     value={project.description || ""}
                     onChange={(e) =>
-                      updateProject(project.id, { description: e.target.value })
+                      updateProject(
+                        project.id,
+                        { description: e.target.value },
+                        true,
+                      )
                     }
+                    onBlur={commitTextChange}
                     placeholder="Brief description of the project..."
                     className="min-h-[80px] resize-none"
                     data-testid={`input-project-description-${index}`}
@@ -174,8 +203,13 @@ export function ProjectsForm({ content, onChange }: ProjectsFormProps) {
                           <Input
                             value={highlight}
                             onChange={(e) =>
-                              updateHighlight(project.id, hIndex, e.target.value)
+                              updateHighlight(
+                                project.id,
+                                hIndex,
+                                e.target.value,
+                              )
                             }
+                            onBlur={commitTextChange}
                             placeholder="React, Node.js, PostgreSQL"
                             data-testid={`input-project-highlight-${index}-${hIndex}`}
                           />

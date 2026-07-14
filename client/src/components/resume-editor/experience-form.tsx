@@ -23,16 +23,26 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type {
+  ResumeEditorChangeHandler,
+  ResumeEditorCommitHandler,
+} from "./types";
 
 interface ExperienceFormProps {
   content: ResumeContent;
-  onChange: (updates: Partial<ResumeContent>) => void;
+  onChange: ResumeEditorChangeHandler;
+  onCommit: ResumeEditorCommitHandler;
 }
 
 interface SortableExperienceItemProps {
   exp: WorkExperience;
   index: number;
-  updateExperience: (id: string, updates: Partial<WorkExperience>) => void;
+  updateExperience: (
+    id: string,
+    updates: Partial<WorkExperience>,
+    coalesce?: boolean,
+  ) => void;
+  commitTextChange: () => void;
   removeExperience: (id: string) => void;
   addHighlight: (expId: string) => void;
   updateHighlight: (expId: string, index: number, value: string) => void;
@@ -43,6 +53,7 @@ function SortableExperienceItem({
   exp,
   index,
   updateExperience,
+  commitTextChange,
   removeExperience,
   addHighlight,
   updateHighlight,
@@ -70,7 +81,14 @@ function SortableExperienceItem({
       className="relative p-4 border rounded-lg bg-muted/30"
       data-testid={`experience-item-${index}`}
     >
-      <div className="absolute top-3 left-3 cursor-grab active:cursor-grabbing" aria-label="Drag to reorder item" {...attributes} {...listeners} role="button" tabIndex={0}>
+      <div
+        className="absolute top-3 left-3 cursor-grab active:cursor-grabbing"
+        aria-label="Drag to reorder item"
+        {...attributes}
+        {...listeners}
+        role="button"
+        tabIndex={0}
+      >
         <GripVertical className="w-5 h-5 text-muted-foreground" />
       </div>
       <div className="absolute top-3 right-3">
@@ -91,8 +109,9 @@ function SortableExperienceItem({
           <Input
             value={exp.company}
             onChange={(e) =>
-              updateExperience(exp.id, { company: e.target.value })
+              updateExperience(exp.id, { company: e.target.value }, true)
             }
+            onBlur={commitTextChange}
             placeholder="Company Name"
             data-testid={`input-company-${index}`}
           />
@@ -102,8 +121,9 @@ function SortableExperienceItem({
           <Input
             value={exp.position}
             onChange={(e) =>
-              updateExperience(exp.id, { position: e.target.value })
+              updateExperience(exp.id, { position: e.target.value }, true)
             }
+            onBlur={commitTextChange}
             placeholder="Job Title"
             data-testid={`input-position-${index}`}
           />
@@ -113,8 +133,9 @@ function SortableExperienceItem({
           <Input
             value={exp.startDate}
             onChange={(e) =>
-              updateExperience(exp.id, { startDate: e.target.value })
+              updateExperience(exp.id, { startDate: e.target.value }, true)
             }
+            onBlur={commitTextChange}
             placeholder="Jan 2020"
             data-testid={`input-start-date-${index}`}
           />
@@ -125,8 +146,9 @@ function SortableExperienceItem({
             <Input
               value={exp.current ? "" : exp.endDate}
               onChange={(e) =>
-                updateExperience(exp.id, { endDate: e.target.value })
+                updateExperience(exp.id, { endDate: e.target.value }, true)
               }
+              onBlur={commitTextChange}
               placeholder="Dec 2023"
               disabled={exp.current}
               data-testid={`input-end-date-${index}`}
@@ -156,8 +178,9 @@ function SortableExperienceItem({
         <Textarea
           value={exp.description}
           onChange={(e) =>
-            updateExperience(exp.id, { description: e.target.value })
+            updateExperience(exp.id, { description: e.target.value }, true)
           }
+          onBlur={commitTextChange}
           placeholder="Brief overview of your role and responsibilities..."
           className="min-h-[80px] resize-none"
           data-testid={`input-description-${index}`}
@@ -186,6 +209,7 @@ function SortableExperienceItem({
                   onChange={(e) =>
                     updateHighlight(exp.id, hIndex, e.target.value)
                   }
+                  onBlur={commitTextChange}
                   placeholder="Achieved X by doing Y resulting in Z"
                   data-testid={`input-highlight-${index}-${hIndex}`}
                 />
@@ -207,28 +231,32 @@ function SortableExperienceItem({
   );
 }
 
-export function ExperienceForm({ content, onChange }: ExperienceFormProps) {
+export function ExperienceForm({
+  content,
+  onChange,
+  onCommit,
+}: ExperienceFormProps) {
   const experiences = content.experience || [];
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    
+
     const oldIndex = experiences.findIndex((exp) => exp.id === active.id);
     const newIndex = experiences.findIndex((exp) => exp.id === over.id);
-    
+
     if (oldIndex < 0 || newIndex < 0) {
-      console.warn('Invalid drag indices:', { oldIndex, newIndex });
+      console.warn("Invalid drag indices:", { oldIndex, newIndex });
       return;
     }
-    
+
     onChange({ experience: arrayMove(experiences, oldIndex, newIndex) });
   };
 
@@ -246,12 +274,21 @@ export function ExperienceForm({ content, onChange }: ExperienceFormProps) {
     onChange({ experience: [...experiences, newExp] });
   };
 
-  const updateExperience = (id: string, updates: Partial<WorkExperience>) => {
+  const updateExperience = (
+    id: string,
+    updates: Partial<WorkExperience>,
+    coalesce = false,
+  ) => {
     const updated = experiences.map((exp) =>
-      exp.id === id ? { ...exp, ...updates } : exp
+      exp.id === id ? { ...exp, ...updates } : exp,
     );
-    onChange({ experience: updated });
+    onChange(
+      { experience: updated },
+      coalesce ? { coalesceKey: "experience" } : undefined,
+    );
   };
+
+  const commitTextChange = () => onCommit("experience");
 
   const removeExperience = (id: string) => {
     onChange({ experience: experiences.filter((exp) => exp.id !== id) });
@@ -271,7 +308,7 @@ export function ExperienceForm({ content, onChange }: ExperienceFormProps) {
     if (exp && exp.highlights) {
       const newHighlights = [...exp.highlights];
       newHighlights[index] = value;
-      updateExperience(expId, { highlights: newHighlights });
+      updateExperience(expId, { highlights: newHighlights }, true);
     }
   };
 
@@ -334,6 +371,7 @@ export function ExperienceForm({ content, onChange }: ExperienceFormProps) {
                     exp={exp}
                     index={index}
                     updateExperience={updateExperience}
+                    commitTextChange={commitTextChange}
                     removeExperience={removeExperience}
                     addHighlight={addHighlight}
                     updateHighlight={updateHighlight}

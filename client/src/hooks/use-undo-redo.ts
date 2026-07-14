@@ -15,34 +15,52 @@ export function useUndoRedo<T>(initial: T) {
     future: [],
   });
 
-  const set = useCallback((updater: T | ((prev: T) => T), options?: { skipHistory?: boolean }) => {
-    setState((current) => {
-      const nextValue = typeof updater === "function"
-        ? (updater as (prev: T) => T)(current.present)
-        : updater;
+  const set = useCallback(
+    (updater: T | ((prev: T) => T), options?: { skipHistory?: boolean }) => {
+      setState((current) => {
+        const nextValue =
+          typeof updater === "function"
+            ? (updater as (prev: T) => T)(current.present)
+            : updater;
 
-      if (options?.skipHistory) {
-        return { ...current, present: nextValue };
-      }
+        if (options?.skipHistory) {
+          return { ...current, present: nextValue };
+        }
 
-      const newPast = [...current.past, current.present].slice(-MAX_HISTORY);
-      return {
-        past: newPast,
-        present: nextValue,
-        future: [],
-      };
-    });
-  }, []);
+        const newPast = [...current.past, current.present].slice(-MAX_HISTORY);
+        return {
+          past: newPast,
+          present: nextValue,
+          future: [],
+        };
+      });
+    },
+    [],
+  );
 
   const undo = useCallback(() => {
     setState((current) => {
       if (current.past.length === 0) return current;
-      const previous = current.past[current.past.length - 1];
+      const previous = current.past.at(-1)!;
       const newPast = current.past.slice(0, -1);
       return {
         past: newPast,
         present: previous,
         future: [current.present, ...current.future],
+      };
+    });
+  }, []);
+
+  const commit = useCallback((previous: T | ((present: T) => T)) => {
+    setState((current) => {
+      const previousValue =
+        typeof previous === "function"
+          ? (previous as (present: T) => T)(current.present)
+          : previous;
+      return {
+        past: [...current.past, previousValue].slice(-MAX_HISTORY),
+        present: current.present,
+        future: [],
       };
     });
   }, []);
@@ -70,6 +88,7 @@ export function useUndoRedo<T>(initial: T) {
   return {
     present: state.present,
     set,
+    commit,
     undo,
     redo,
     reset,
