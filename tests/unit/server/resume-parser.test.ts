@@ -230,8 +230,12 @@ Developer
 SKILLS`;
 
       const result = parseResumeText(text);
-      expect(result.experience?.[0].highlights).toContain(
+      const highlights = result.experience?.[0]?.highlights ?? [];
+      expect(highlights).toContain(
         'Reduced infrastructure costs year over year -15% cost reduction while maintaining reliability',
+      );
+      expect(highlights).not.toContain(
+        '-15% cost reduction while maintaining reliability',
       );
     });
 

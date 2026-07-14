@@ -68,6 +68,7 @@ jobs:
     
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/resume_builder
+      NODE_ENV: test
     
     services:
       postgres:
