@@ -5,7 +5,9 @@ const PAGE_WIDTH = 612; // US Letter in points (8.5 * 72)
 const PAGE_HEIGHT = 792; // 11 * 72
 const MARGIN = 50;
 
-export function generateResumePDF(content: ResumeContent): InstanceType<typeof PDFDocument> {
+export function generateResumePDF(
+  content: ResumeContent,
+): InstanceType<typeof PDFDocument> {
   const doc = new PDFDocument({
     size: "LETTER",
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
@@ -52,7 +54,9 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
   if (content.summary && content.summary.trim()) {
     y = addSectionHeader(doc, "Professional Summary", y);
     doc.fontSize(10).font("Helvetica");
-    const summaryHeight = doc.heightOfString(content.summary, { width: PAGE_WIDTH - 2 * MARGIN });
+    const summaryHeight = doc.heightOfString(content.summary, {
+      width: PAGE_WIDTH - 2 * MARGIN,
+    });
     y = checkPageBreak(doc, y, summaryHeight);
     doc.text(content.summary, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
     y += summaryHeight + 12;
@@ -80,16 +84,22 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
       }
       if (exp.description) {
         doc.fontSize(10).font("Helvetica");
-        const descHeight = doc.heightOfString(exp.description, { width: PAGE_WIDTH - 2 * MARGIN });
+        const descHeight = doc.heightOfString(exp.description, {
+          width: PAGE_WIDTH - 2 * MARGIN,
+        });
         y = checkPageBreak(doc, y, descHeight);
-        doc.text(exp.description, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
+        doc.text(exp.description, MARGIN, y, {
+          width: PAGE_WIDTH - 2 * MARGIN,
+        });
         y += descHeight + 4;
       }
       if (exp.highlights && exp.highlights.length > 0) {
         doc.fontSize(10).font("Helvetica");
         for (const highlight of exp.highlights) {
           const bulletText = `• ${highlight}`;
-          const hHeight = doc.heightOfString(bulletText, { width: PAGE_WIDTH - 2 * MARGIN });
+          const hHeight = doc.heightOfString(bulletText, {
+            width: PAGE_WIDTH - 2 * MARGIN,
+          });
           y = checkPageBreak(doc, y, hHeight);
           doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
           y += hHeight + 2;
@@ -134,7 +144,9 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
     const skillText = content.skills
       .map((s) => `${s.name}${s.level ? ` (${s.level})` : ""}`)
       .join("  •  ");
-    const skillHeight = doc.heightOfString(skillText, { width: PAGE_WIDTH - 2 * MARGIN });
+    const skillHeight = doc.heightOfString(skillText, {
+      width: PAGE_WIDTH - 2 * MARGIN,
+    });
     y = checkPageBreak(doc, y, skillHeight);
     doc.text(skillText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
     y += skillHeight + 12;
@@ -152,16 +164,22 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
       }
       if (project.description) {
         doc.fontSize(10).font("Helvetica");
-        const pHeight = doc.heightOfString(project.description, { width: PAGE_WIDTH - 2 * MARGIN });
+        const pHeight = doc.heightOfString(project.description, {
+          width: PAGE_WIDTH - 2 * MARGIN,
+        });
         y = checkPageBreak(doc, y, pHeight);
-        doc.text(project.description, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
+        doc.text(project.description, MARGIN, y, {
+          width: PAGE_WIDTH - 2 * MARGIN,
+        });
         y += pHeight + 4;
       }
       if (project.highlights && project.highlights.length > 0) {
         doc.fontSize(10).font("Helvetica");
         for (const highlight of project.highlights) {
           const bulletText = `• ${highlight}`;
-          const hHeight = doc.heightOfString(bulletText, { width: PAGE_WIDTH - 2 * MARGIN });
+          const hHeight = doc.heightOfString(bulletText, {
+            width: PAGE_WIDTH - 2 * MARGIN,
+          });
           y = checkPageBreak(doc, y, hHeight);
           doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
           y += hHeight + 2;
@@ -174,17 +192,30 @@ export function generateResumePDF(content: ResumeContent): InstanceType<typeof P
   return doc;
 }
 
-function addSectionHeader(doc: InstanceType<typeof PDFDocument>, title: string, y: number): number {
+function addSectionHeader(
+  doc: InstanceType<typeof PDFDocument>,
+  title: string,
+  y: number,
+): number {
   y = checkPageBreak(doc, y, 20);
   doc.fontSize(13).font("Helvetica-Bold");
   doc.text(title, MARGIN, y);
   y += 16;
-  doc.moveTo(MARGIN, y).lineTo(PAGE_WIDTH - MARGIN, y).strokeColor("#cccccc").lineWidth(1).stroke();
+  doc
+    .moveTo(MARGIN, y)
+    .lineTo(PAGE_WIDTH - MARGIN, y)
+    .strokeColor("#cccccc")
+    .lineWidth(1)
+    .stroke();
   y += 8;
   return y;
 }
 
-function checkPageBreak(doc: InstanceType<typeof PDFDocument>, y: number, neededHeight: number): number {
+function checkPageBreak(
+  doc: InstanceType<typeof PDFDocument>,
+  y: number,
+  neededHeight: number,
+): number {
   if (y + neededHeight > PAGE_HEIGHT - MARGIN) {
     doc.addPage();
     return MARGIN;

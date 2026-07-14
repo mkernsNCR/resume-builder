@@ -62,14 +62,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createResume(resume: CreateResume): Promise<Resume> {
-    const conflictUpdates: Partial<typeof resumes.$inferInsert> = {
+    const conflictUpdates = {
       title: resume.title,
       content: resume.content,
-      updatedAt: new Date(),
+      ...(resume.template !== undefined ? { template: resume.template } : {}),
+      updatedAt: sql`now()`,
     };
-    if (resume.template !== undefined) {
-      conflictUpdates.template = resume.template;
-    }
 
     const result = await db
       .insert(resumes)

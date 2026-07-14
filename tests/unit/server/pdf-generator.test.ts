@@ -24,14 +24,25 @@ const content: ResumeContent = {
     },
   ],
   education: [
-    { id: "ed1", institution: "MIT", degree: "BSc", field: "Computer Science", startDate: "2014" },
+    {
+      id: "ed1",
+      institution: "MIT",
+      degree: "BSc",
+      field: "Computer Science",
+      startDate: "2014",
+    },
   ],
   skills: [
     { id: "s1", name: "React", level: "expert" },
     { id: "s2", name: "TypeScript", level: "expert" },
   ],
   projects: [
-    { id: "p1", name: "Dashboard", description: "Analytics dashboard.", highlights: ["500 stars"] },
+    {
+      id: "p1",
+      name: "Dashboard",
+      description: "Analytics dashboard.",
+      highlights: ["500 stars"],
+    },
   ],
 };
 
@@ -79,7 +90,9 @@ describe("generateResumePDF", () => {
       projects: [],
     });
     const fullPdf = renderPdf(content);
-    const [smallSize, fullSize] = (await Promise.all([smallPdf, fullPdf])).map((pdf) => pdf.length);
+    const [smallSize, fullSize] = (await Promise.all([smallPdf, fullPdf])).map(
+      (pdf) => pdf.length,
+    );
     expect(fullSize).toBeGreaterThan(smallSize);
   });
 
@@ -89,13 +102,17 @@ describe("generateResumePDF", () => {
       experience: [
         {
           ...content.experience![0],
-          highlights: Array.from({ length: 100 }, (_, index) => `Achievement ${index + 1}`),
+          highlights: Array.from(
+            { length: 100 },
+            (_, index) => `Achievement ${index + 1}`,
+          ),
         },
       ],
     };
 
     const pdfBuffer = await renderPdf(longContent);
-    const pageCount = pdfBuffer.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+    const pageCount =
+      pdfBuffer.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
     expect(pageCount).toBeGreaterThan(1);
   });
 });

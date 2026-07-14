@@ -307,7 +307,7 @@ export async function registerRoutes(
       if (!resume) {
         throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
       }
-      const doc = generateResumePDF(resume.content as ResumeContent);
+      const doc = generateResumePDF(resume.content);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="${(resume.title || "resume").replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`);
       doc.pipe(res);

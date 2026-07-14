@@ -210,6 +210,32 @@ test.describe("API Endpoints", () => {
     expect((await response.json()).code).toBe("RESUME_NOT_FOUND");
   });
 
+  test("GET /api/resumes/:id/pdf should return a PDF attachment", async ({
+    request,
+  }) => {
+    const response = await request.get(`/api/resumes/${testResumeId}/pdf`);
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("application/pdf");
+    expect(response.headers()["content-disposition"]).toContain(
+      'attachment; filename="API_Test_Fixture_Resume.pdf"',
+    );
+    expect((await response.body()).subarray(0, 4).toString("latin1")).toBe(
+      "%PDF",
+    );
+  });
+
+  test("GET /api/resumes/:id/pdf should return 404 for a missing resume", async ({
+    request,
+  }) => {
+    const response = await request.get(
+      "/api/resumes/non-existent-id-12345/pdf",
+    );
+
+    expect(response.status()).toBe(404);
+    expect((await response.json()).code).toBe("RESUME_NOT_FOUND");
+  });
+
   test("POST /api/resumes should create new resume", async ({ request }) => {
     const newResume = {
       title: "E2E Test Resume",
