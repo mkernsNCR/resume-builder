@@ -94,6 +94,33 @@ test.describe("Resume CRUD Operations", () => {
     await expect(page.getByTestId(`resume-card-${resumeId}`)).toHaveCount(0);
   });
 
+  test("should show most recently created resume at top of sidebar", async ({ request, page }) => {
+    // Create a resume via API
+    const createResponse = await request.post("/api/resumes", {
+      data: {
+        title: "Newest Resume For Ordering Test",
+        template: "modern",
+        content: {
+          fullName: "Ordering Test User",
+        },
+      },
+    });
+    expect(createResponse.ok()).toBeTruthy();
+    const created = await createResponse.json();
+
+    await page.goto("/");
+
+    // Wait for resume cards to appear
+    const firstCard = page.getByTestId(/^resume-card-/).first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+
+    // The most recently created resume should be the first card
+    await expect(firstCard).toHaveAttribute(
+      "data-testid",
+      `resume-card-${created.id}`,
+    );
+  });
+
   test("should skip upload and create resume manually", async ({ page }) => {
     await page.goto("/");
 

@@ -168,6 +168,20 @@ EDUCATION`;
       expect(result.experience?.[0].position).toContain('Senior Software Engineer');
     });
 
+    it('should preserve hyphens in job titles', () => {
+      const text = `John Doe
+
+EXPERIENCE
+Tech Corp  Jan 2020 - Present
+Full-Stack Engineer
+• Led platform development
+
+EDUCATION`;
+
+      const result = parseResumeText(text);
+      expect(result.experience?.[0].position).toBe('Full-Stack Engineer');
+    });
+
     it('should extract multiple jobs', () => {
       const text = `John Doe
 
@@ -201,6 +215,46 @@ SKILLS`;
       const result = parseResumeText(text);
       expect(result.experience?.[0].highlights?.length).toBeGreaterThanOrEqual(1);
       expect(result.experience?.[0].highlights?.[0]).toContain('authentication');
+    });
+
+    it('should keep line-leading negative metrics in the current bullet', () => {
+      const text = `John Doe
+
+EXPERIENCE
+Tech Corp  Jan 2020 - Present
+Developer
+• Reduced infrastructure costs year over year
+-15% cost reduction while maintaining reliability
+• Improved deployment frequency across the team
+
+SKILLS`;
+
+      const result = parseResumeText(text);
+      const highlights = result.experience?.[0]?.highlights ?? [];
+      expect(highlights).toContain(
+        'Reduced infrastructure costs year over year -15% cost reduction while maintaining reliability',
+      );
+      expect(highlights).not.toContain(
+        '-15% cost reduction while maintaining reliability',
+      );
+    });
+
+    it('should not treat inline hyphens as bullet markers between jobs', () => {
+      const text = `John Doe
+
+EXPERIENCE
+Company A  Jan 2022 - Present
+Senior Engineer
+• Built customer-facing systems
+
+Co-Founder Labs  Jun 2019 - Dec 2021
+Developer
+• Shipped product improvements
+
+SKILLS`;
+
+      const result = parseResumeText(text);
+      expect(result.experience?.[1].company).toContain('Co-Founder Labs');
     });
 
     it('should handle Present/Current as end date', () => {

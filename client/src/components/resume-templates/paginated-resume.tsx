@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, type ReactNode } from "react";
+import { useRef, useEffect, useState } from "react";
 import type { ResumeContent, ResumeTemplate } from "@shared/schema";
 import { ModernTemplate } from "./modern-template";
 import { ClassicTemplate } from "./classic-template";
@@ -73,15 +73,15 @@ export function PaginatedResume({ content, template, showPageControls = true }: 
         </div>
       )}
 
-      {/* 
+      {/*
         Visible page with clip - scrollable on mobile.
         NOTE: Horizontal scrolling requires the parent container to NOT have overflow:hidden or clip transforms.
         If scrolling doesn't work, ensure the parent (e.g., ScrollArea in home.tsx) allows overflow.
       */}
       <div className="sm:mx-0 sm:px-0">
-        <div 
+        <div
           className="resume-page-container relative bg-white"
-          style={{ 
+          style={{
             width: PAGE_WIDTH,
             height: PAGE_HEIGHT,
             overflow: 'hidden',
@@ -155,4 +155,3 @@ export function PaginatedResumeForPrint({ content, template }: Omit<PaginatedRes
     </div>
   );
 }
-

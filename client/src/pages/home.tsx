@@ -1,8 +1,7 @@
-import { useState, useRef, useCallback, type MouseEvent } from "react";
+import { useState, useRef, useCallback, useEffect, type MouseEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -48,9 +47,29 @@ const defaultContent: ResumeContent = {
   projects: [],
 };
 
+type SaveRequest = {
+  content: ResumeContent;
+  template: string;
+  title: string;
+  resumeId: string | null;
+  createId: string | null;
+  editorVersion: number;
+  showToast?: boolean;
+  signal?: AbortSignal;
+};
+
+function getAutosaveFingerprint(
+  content: ResumeContent,
+  template: ResumeTemplate,
+): string {
+  return JSON.stringify([template, content]);
+}
+
 export default function Home() {
   const { toast } = useToast();
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
+  const currentResumeIdRef = useRef<string | null>(null);
+  const editorVersionRef = useRef(0);
   const [content, setContent] = useState<ResumeContent>(defaultContent);
   const [template, setTemplate] = useState<ResumeTemplate>("modern");
   const [extractedText, setExtractedText] = useState("");
@@ -61,6 +80,23 @@ export default function Home() {
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveInFlightRef = useRef(false);
+  const pendingSaveRef = useRef<SaveRequest | null>(null);
+  const activeSaveControllerRef = useRef<AbortController | null>(null);
+  const createResumeIdRef = useRef<string | null>(null);
+
+  const advanceEditorGeneration = () => {
+    editorVersionRef.current += 1;
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    createResumeIdRef.current = null;
+    activeSaveControllerRef.current?.abort();
+    activeSaveControllerRef.current = null;
+  };
 
   // Fetch all resumes
   const { data: resumes, isLoading: loadingResumes } = useQuery<Resume[]>({
@@ -69,33 +105,65 @@ export default function Home() {
 
   // Save resume mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: { content: ResumeContent; template: string; title: string }) => {
-      if (currentResumeId) {
-        return apiRequest("PUT", `/api/resumes/${currentResumeId}`, {
+    mutationFn: async (data: SaveRequest) => {
+      if (data.resumeId) {
+        return apiRequest("PUT", `/api/resumes/${data.resumeId}`, {
           title: data.title,
           content: data.content,
           template: data.template,
-        });
+        }, data.signal);
       } else {
+        if (!data.createId) {
+          throw new Error("Missing create request ID");
+        }
         return apiRequest("POST", "/api/resumes", {
+          id: data.createId,
           title: data.title,
           content: data.content,
           template: data.template,
-        });
+        }, data.signal);
       }
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response, variables) => {
       const result = await response.json();
-      if (!currentResumeId) {
+      const isCurrentGeneration =
+        variables.editorVersion === editorVersionRef.current;
+      if (
+        !variables.resumeId &&
+        isCurrentGeneration &&
+        !currentResumeIdRef.current
+      ) {
+        currentResumeIdRef.current = result.id;
+        if (createResumeIdRef.current === variables.createId) {
+          createResumeIdRef.current = null;
+        }
         setCurrentResumeId(result.id);
+        // mutateAsync resolves only after onSuccess completes, so this ID is
+        // applied before the queue dequeues a follow-up create request. Keep
+        // that ordering guarantee if the mutation flow is ever refactored.
+        if (
+          pendingSaveRef.current?.resumeId === null &&
+          pendingSaveRef.current.editorVersion === variables.editorVersion
+        ) {
+          pendingSaveRef.current.resumeId = result.id;
+          pendingSaveRef.current.createId = null;
+        }
       }
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      toast({
-        title: "Resume saved",
-        description: "Your changes have been saved successfully.",
-      });
+      if (isCurrentGeneration && variables.showToast !== false) {
+        toast({
+          title: "Resume saved",
+          description: "Your changes have been saved successfully.",
+        });
+      }
     },
-    onError: () => {
+    onError: (_error, variables) => {
+      if (
+        variables.showToast === false ||
+        variables.editorVersion !== editorVersionRef.current
+      ) {
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to save resume. Please try again.",
@@ -103,6 +171,7 @@ export default function Home() {
       });
     },
   });
+  const saveResume = saveMutation.mutateAsync;
 
   // Upload file mutation
   const uploadMutation = useMutation({
@@ -141,6 +210,8 @@ export default function Home() {
         }));
         
         // Create a new resume with the parsed content
+        advanceEditorGeneration();
+        currentResumeIdRef.current = null;
         setCurrentResumeId(null);
       }
       
@@ -170,6 +241,8 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       // If we deleted the current resume, reset to new
       if (deletedId === currentResumeId) {
+        advanceEditorGeneration();
+        currentResumeIdRef.current = null;
         setCurrentResumeId(null);
         setContent(defaultContent);
         setExtractedText("");
@@ -180,7 +253,7 @@ export default function Home() {
         description: "The resume has been removed.",
       });
     },
-    onError: (_error, _deletedId) => {
+    onError: () => {
       setDeletingResumeId(null);
       toast({
         title: "Error",
@@ -210,12 +283,91 @@ export default function Home() {
     setContent((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const handleSave = () => {
+  const processSaveQueue = useCallback(async () => {
+    if (saveInFlightRef.current) return;
+
+    saveInFlightRef.current = true;
+    try {
+      while (pendingSaveRef.current) {
+        const request = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        if (request.editorVersion !== editorVersionRef.current) {
+          continue;
+        }
+
+        const controller = new AbortController();
+        activeSaveControllerRef.current = controller;
+        try {
+          await saveResume({ ...request, signal: controller.signal });
+        } catch {
+          if (request.editorVersion !== editorVersionRef.current) {
+            continue;
+          }
+          // A newer edit supersedes the failed value and should be processed
+          // immediately. Otherwise retain this value for the next trigger.
+          if (pendingSaveRef.current) {
+            continue;
+          }
+          pendingSaveRef.current = request;
+          break;
+        } finally {
+          if (activeSaveControllerRef.current === controller) {
+            activeSaveControllerRef.current = null;
+          }
+        }
+      }
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  }, [saveResume]);
+
+  const handleSave = useCallback((opts?: { showToast?: boolean }) => {
+    if (opts?.showToast !== false && autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
     const title = content.fullName 
       ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
       : "Untitled Resume";
-    saveMutation.mutate({ content, template, title });
-  };
+    const resumeId = currentResumeIdRef.current;
+    if (!resumeId && !createResumeIdRef.current) {
+      createResumeIdRef.current = crypto.randomUUID();
+    }
+    pendingSaveRef.current = {
+      content,
+      template,
+      title,
+      resumeId,
+      createId: resumeId ? null : createResumeIdRef.current,
+      editorVersion: editorVersionRef.current,
+      showToast: opts?.showToast,
+    };
+    void processSaveQueue();
+  }, [content, template, processSaveQueue]);
+
+  // Autosave with debouncing — saves 2s after content/template stops changing
+  const skipAutosaveFingerprintRef = useRef<string | null>(
+    getAutosaveFingerprint(defaultContent, "modern"),
+  );
+  useEffect(() => {
+    const skippedFingerprint = skipAutosaveFingerprintRef.current;
+    skipAutosaveFingerprintRef.current = null;
+    if (skippedFingerprint === getAutosaveFingerprint(content, template)) {
+      return;
+    }
+    if (!content.fullName) return;
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      handleSave({ showToast: false });
+    }, 2000);
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [content, template, handleSave]);
 
   // Client-side PDF export using html2canvas + jsPDF
   const handleExportPDF = async () => {
@@ -423,12 +575,26 @@ export default function Home() {
   };
 
   const loadResume = (resume: Resume) => {
+    const nextContent = resume.content as ResumeContent;
+    const nextTemplate = resume.template as ResumeTemplate;
+    skipAutosaveFingerprintRef.current = getAutosaveFingerprint(
+      nextContent,
+      nextTemplate,
+    );
+    advanceEditorGeneration();
+    currentResumeIdRef.current = resume.id;
     setCurrentResumeId(resume.id);
-    setContent(resume.content as ResumeContent);
-    setTemplate(resume.template as ResumeTemplate);
+    setContent(nextContent);
+    setTemplate(nextTemplate);
   };
 
   const createNewResume = () => {
+    skipAutosaveFingerprintRef.current = getAutosaveFingerprint(
+      defaultContent,
+      "modern",
+    );
+    advanceEditorGeneration();
+    currentResumeIdRef.current = null;
     setCurrentResumeId(null);
     setContent(defaultContent);
     setTemplate("modern");
@@ -553,7 +719,7 @@ export default function Home() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={saveMutation.isPending}
               data-testid="button-save"
               className="px-2 sm:px-3"
@@ -766,6 +932,10 @@ export default function Home() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            skipAutosaveFingerprintRef.current =
+                              getAutosaveFingerprint(defaultContent, template);
+                            advanceEditorGeneration();
+                            currentResumeIdRef.current = null;
                             setContent(defaultContent);
                             setCurrentResumeId(null);
                             setActiveTab("edit");

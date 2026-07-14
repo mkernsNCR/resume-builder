@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import {
   resumes,
   users,
@@ -10,9 +10,12 @@ import {
   type InsertUser,
   type ResumeContent,
 } from "@shared/schema";
+import { env } from "./env";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+export type CreateResume = InsertResume & { id?: string };
+
+export const pool = new Pool({
+  connectionString: env.DATABASE_URL,
 });
 
 export const db = drizzle(pool);
@@ -26,7 +29,7 @@ export interface IStorage {
   // Resume methods
   getAllResumes(): Promise<Resume[]>;
   getResume(id: string): Promise<Resume | undefined>;
-  createResume(resume: InsertResume): Promise<Resume>;
+  createResume(resume: CreateResume): Promise<Resume>;
   updateResume(id: string, updates: Partial<InsertResume>): Promise<Resume | undefined>;
   deleteResume(id: string): Promise<boolean>;
 }
@@ -50,7 +53,7 @@ export class DatabaseStorage implements IStorage {
 
   // Resume methods
   async getAllResumes(): Promise<Resume[]> {
-    return db.select().from(resumes).orderBy(resumes.updatedAt);
+    return db.select().from(resumes).orderBy(desc(resumes.updatedAt));
   }
 
   async getResume(id: string): Promise<Resume | undefined> {
@@ -58,8 +61,24 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async createResume(resume: InsertResume): Promise<Resume> {
-    const result = await db.insert(resumes).values(resume).returning();
+  async createResume(resume: CreateResume): Promise<Resume> {
+    const conflictUpdates: Partial<typeof resumes.$inferInsert> = {
+      title: resume.title,
+      content: resume.content,
+      updatedAt: new Date(),
+    };
+    if (resume.template !== undefined) {
+      conflictUpdates.template = resume.template;
+    }
+
+    const result = await db
+      .insert(resumes)
+      .values({ ...resume, template: resume.template ?? "modern" })
+      .onConflictDoUpdate({
+        target: resumes.id,
+        set: conflictUpdates,
+      })
+      .returning();
     return result[0];
   }
 

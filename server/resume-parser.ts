@@ -378,7 +378,7 @@ function extractSkills(text: string, hasDedicatedSection: boolean): Array<{ id: 
   // Parse skills separated by bullets, commas, pipes, semicolons, or newlines
   const noiseWords = new Set(['and', 'or', 'the', 'a', 'an', 'in', 'of', 'for', 'to', 'with', 'etc', 'including']);
   const rawSkills = cleanedText
-    .split(/[•●○◦▪▸►\*,|;]\s*|\n/)
+    .split(/[•●○◦▪▸►*,|;]\s*|\n/)
     .map(s => s.trim())
     .filter(s => s.length > 1 && s.length < 40 && !/^\d+$/.test(s))
     .filter(s => !noiseWords.has(s.toLowerCase()));
@@ -468,7 +468,7 @@ function findDateRanges(text: string): Array<{ startDate: string; endDate: strin
  * Extract bullet points from text. Handles various bullet styles: •, -, *, >, →, ▸, numbered lists.
  */
 function extractBulletPoints(text: string): Array<{ text: string; index: number }> {
-  const bulletPattern = /(?:^|\n)\s*(?:[•●○◦▪▸►→\-\*>]|\d+[.)]\s)\s*([^\n]+(?:\n(?!\s*(?:[•●○◦▪▸►→\-\*>]|\d+[.)]\s|\n))[^\n]+)*)/g;
+  const bulletPattern = /(?:^|\n)\s*(?:[•●○◦▪▸►→*>]\s*|-\s+|\d+[.)]\s+)([^\n]+(?:\n(?!\s*(?:[•●○◦▪▸►→*>]\s*|-\s+|\d+[.)]\s+|\n))[^\n]+)*)/g;
   const bullets: Array<{ text: string; index: number }> = [];
   let match;
 
@@ -522,11 +522,11 @@ function extractExperience(expText: string): Array<{ id: string; company: string
       const nextNewline = afterPrevDate.indexOf('\n');
       if (nextNewline > 0) {
         const searchArea = cleanedText.substring(prevEnd + nextNewline, dateIndex);
-        const lastBullet = searchArea.search(/[•●○◦▪▸►→\-\*>]\s*[A-Z]/);
-        if (lastBullet > 0) {
+        const lastBullet = searchArea.search(/(?:^|\n)\s*(?:[•●○◦▪▸►→*>]\s*|-\s+)[A-Z]/);
+        if (lastBullet >= 0) {
           // Find end of last bullet section
           const afterBullets = searchArea.substring(lastBullet);
-          const nonBulletLine = afterBullets.search(/\n\s*(?![•●○◦▪▸►→\-\*>])[A-Z]/);
+          const nonBulletLine = afterBullets.search(/\n\s*(?!(?:[•●○◦▪▸►→*>]\s*|-\s+))[A-Z]/);
           if (nonBulletLine > 0) {
             searchStart = prevEnd + nextNewline + lastBullet + nonBulletLine;
           } else {
@@ -547,7 +547,7 @@ function extractExperience(expText: string): Array<{ id: string; company: string
     // Get text after date (position/title)
     const afterDateStart = dateIndex + dateLength;
     const afterDate = cleanedText.substring(afterDateStart);
-    const positionMatch = afterDate.match(/^[\s\n]*([A-Za-z][A-Za-z\s\-\/&,]+?)(?=\s*\n|\s*[•●○◦▪▸►→\-\*>]|$)/);
+    const positionMatch = afterDate.match(/^[\s\n]*([A-Za-z][A-Za-z\s/&,-]+?)(?=\s*\n|\s*[•●○◦▪▸►→*>]|$)/);
     let position = positionMatch ? positionMatch[1].trim() : "";
     position = position.replace(/\s+-/g, '-').replace(/-\s+/g, '-');
 
