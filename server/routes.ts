@@ -12,6 +12,7 @@ import { fileTypeFromFile } from "file-type";
 import { ApiError } from "./api-error";
 import { scoreResume } from "./resume-scoring";
 import { matchJobDescription } from "./job-matcher";
+import { generateSuggestions } from "./content-suggestions";
 
 const require = createRequire(import.meta.url);
 
@@ -276,6 +277,22 @@ export async function registerRoutes(
             validationResult.data.jobDescription,
           ),
         );
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  // AI content suggestions
+  app.post(
+    "/api/resumes/:id/suggestions",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const resume = await storage.getResume(req.params.id as string);
+        if (!resume) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        res.json(generateSuggestions(resume.content));
       } catch (error) {
         next(error);
       }

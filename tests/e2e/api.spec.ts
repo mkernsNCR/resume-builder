@@ -156,6 +156,60 @@ test.describe("API Endpoints", () => {
     expect((await response.json()).code).toBe("RESUME_NOT_FOUND");
   });
 
+  test("POST /api/resumes/:id/suggestions should return grounded templates", async ({
+    request,
+  }) => {
+    const createResponse = await request.post("/api/resumes", {
+      data: {
+        title: "Suggestion Test Resume",
+        template: "modern",
+        content: {
+          fullName: "Suggestion Test User",
+          title: "Engineer",
+          experience: [
+            {
+              id: "experience-1",
+              company: "Example Co",
+              position: "Engineer",
+              startDate: "2024",
+            },
+          ],
+        },
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    const created = await createResponse.json();
+
+    try {
+      const response = await request.post(
+        `/api/resumes/${created.id}/suggestions`,
+      );
+
+      expect(response.status()).toBe(200);
+      const suggestions = await response.json();
+      expect(suggestions.length).toBeGreaterThan(0);
+      expect(
+        suggestions.find(
+          (suggestion: { field: string }) =>
+            suggestion.field === "highlights-experience-1",
+        ).suggestedValue,
+      ).toContain("[verified");
+    } finally {
+      await request.delete(`/api/resumes/${created.id}`);
+    }
+  });
+
+  test("POST /api/resumes/:id/suggestions should return 404 for a missing resume", async ({
+    request,
+  }) => {
+    const response = await request.post(
+      "/api/resumes/non-existent-id-12345/suggestions",
+    );
+
+    expect(response.status()).toBe(404);
+    expect((await response.json()).code).toBe("RESUME_NOT_FOUND");
+  });
+
   test("POST /api/resumes should create new resume", async ({ request }) => {
     const newResume = {
       title: "E2E Test Resume",
