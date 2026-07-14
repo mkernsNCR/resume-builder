@@ -6,6 +6,7 @@ import { SkillsForm } from "./skills-form";
 import { ProjectsForm } from "./projects-form";
 import type { ResumeContent } from "@shared/schema";
 import type {
+  EditorTab,
   ResumeEditorChangeHandler,
   ResumeEditorCommitHandler,
 } from "./types";
@@ -22,8 +23,8 @@ interface ResumeEditorProps {
   content: ResumeContent;
   onChange: ResumeEditorChangeHandler;
   onCommit: ResumeEditorCommitHandler;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab: EditorTab;
+  onTabChange: (tab: EditorTab) => void;
 }
 
 export function ResumeEditor({
@@ -33,10 +34,16 @@ export function ResumeEditor({
   activeTab,
   onTabChange,
 }: ResumeEditorProps) {
+  const handleTabChange = (tab: string) => {
+    if (EDITOR_TABS.includes(tab as EditorTab)) {
+      onTabChange(tab as EditorTab);
+    }
+  };
+
   return (
     <Tabs
       value={activeTab}
-      onValueChange={onTabChange}
+      onValueChange={handleTabChange}
       className="w-full"
       data-resume-editor
     >
@@ -83,11 +90,11 @@ export function ResumeEditor({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="personal">
+      <TabsContent value={EDITOR_TABS[0]}>
         <PersonalInfoForm content={content} onChange={onChange} />
       </TabsContent>
 
-      <TabsContent value="experience">
+      <TabsContent value={EDITOR_TABS[1]}>
         <ExperienceForm
           content={content}
           onChange={onChange}
@@ -95,7 +102,7 @@ export function ResumeEditor({
         />
       </TabsContent>
 
-      <TabsContent value="education">
+      <TabsContent value={EDITOR_TABS[2]}>
         <EducationForm
           content={content}
           onChange={onChange}
@@ -103,11 +110,11 @@ export function ResumeEditor({
         />
       </TabsContent>
 
-      <TabsContent value="skills">
+      <TabsContent value={EDITOR_TABS[3]}>
         <SkillsForm content={content} onChange={onChange} />
       </TabsContent>
 
-      <TabsContent value="projects">
+      <TabsContent value={EDITOR_TABS[4]}>
         <ProjectsForm
           content={content}
           onChange={onChange}

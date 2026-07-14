@@ -8,6 +8,8 @@ export const EDITOR_TABS = [
   "projects",
 ] as const;
 
+export type EditorTab = (typeof EDITOR_TABS)[number];
+
 export type ResumeHistorySection = "experience" | "education" | "projects";
 
 export type ResumeEditorChangeHandler = (

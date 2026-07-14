@@ -23,6 +23,7 @@ import { FileUpload } from "@/components/file-upload";
 import { ExtractedTextDisplay } from "@/components/extracted-text-display";
 import { EDITOR_TABS, ResumeEditor } from "@/components/resume-editor";
 import type {
+  EditorTab,
   ResumeEditorChangeHandler,
   ResumeHistorySection,
 } from "@/components/resume-editor/types";
@@ -104,7 +105,9 @@ export default function Home() {
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState("upload");
-  const [activeEditorTab, setActiveEditorTab] = useState("personal");
+  const [activeEditorTab, setActiveEditorTab] = useState<EditorTab>(
+    EDITOR_TABS[0],
+  );
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
   const [duplicatingResumeIds, setDuplicatingResumeIds] = useState<Set<string>>(
     () => new Set(),
@@ -308,7 +311,7 @@ export default function Home() {
       }
 
       // Auto-switch to Edit tab so user can review and edit
-      setActiveEditorTab("personal");
+      setActiveEditorTab(EDITOR_TABS[0]);
       setActiveTab("edit");
 
       toast({
@@ -340,7 +343,7 @@ export default function Home() {
         setCurrentResumeId(null);
         resetContent(defaultContent);
         setExtractedText("");
-        setActiveEditorTab("personal");
+        setActiveEditorTab(EDITOR_TABS[0]);
       }
       setDeletingResumeId(null);
       toast({
@@ -550,7 +553,7 @@ export default function Home() {
 
   // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
   const handleExportPDF = useCallback(async () => {
-    if (isExportingRef.current) return;
+    if (!content.fullName || isExportingRef.current) return;
     isExportingRef.current = true;
     setIsExporting(true);
 
@@ -847,7 +850,7 @@ export default function Home() {
     setCurrentResumeId(resume.id);
     resetContent(nextContent);
     setTemplate(nextTemplate);
-    setActiveEditorTab("personal");
+    setActiveEditorTab(EDITOR_TABS[0]);
   };
 
   const createNewResume = () => {
@@ -861,7 +864,7 @@ export default function Home() {
     resetContent(defaultContent);
     setTemplate("modern");
     setExtractedText("");
-    setActiveEditorTab("personal");
+    setActiveEditorTab(EDITOR_TABS[0]);
   };
 
   return (
@@ -1282,7 +1285,7 @@ export default function Home() {
                             currentResumeIdRef.current = null;
                             resetContent(defaultContent);
                             setCurrentResumeId(null);
-                            setActiveEditorTab("personal");
+                            setActiveEditorTab(EDITOR_TABS[0]);
                             setActiveTab("edit");
                           }}
                           data-testid="button-skip-upload"
