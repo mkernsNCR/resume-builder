@@ -62,6 +62,39 @@ test.describe("API Endpoints", () => {
     expect(response.status()).toBe(404);
   });
 
+  test("POST /api/resumes/:id/score should score a persisted resume", async ({
+    request,
+  }) => {
+    const response = await request.post(`/api/resumes/${testResumeId}/score`);
+
+    expect(response.status()).toBe(200);
+    const score = await response.json();
+    expect(score.total).toBeGreaterThan(0);
+    expect(score.total).toBeLessThanOrEqual(100);
+    expect(score.sections).toHaveLength(6);
+    expect(
+      score.sections.reduce(
+        (total: number, section: { maxScore: number }) =>
+          total + section.maxScore,
+        0,
+      ),
+    ).toBe(100);
+  });
+
+  test("POST /api/resumes/:id/score should return 404 for a missing resume", async ({
+    request,
+  }) => {
+    const response = await request.post(
+      "/api/resumes/non-existent-id-12345/score",
+    );
+
+    expect(response.status()).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      code: "RESUME_NOT_FOUND",
+      message: "Resume not found",
+    });
+  });
+
   test("POST /api/resumes should create new resume", async ({ request }) => {
     const newResume = {
       title: "E2E Test Resume",

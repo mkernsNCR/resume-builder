@@ -10,6 +10,7 @@ import { insertResumeSchema, resumeContentSchema } from "@shared/schema";
 import { parseResumeText } from "./resume-parser";
 import { fileTypeFromFile } from "file-type";
 import { ApiError } from "./api-error";
+import { scoreResume } from "./resume-scoring";
 
 const require = createRequire(import.meta.url);
 
@@ -226,6 +227,22 @@ export async function registerRoutes(
           content: original.content,
         });
         res.status(201).json(duplicate);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  // Score resume
+  app.post(
+    "/api/resumes/:id/score",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const resume = await storage.getResume(req.params.id as string);
+        if (!resume) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        res.json(scoreResume(resume.content));
       } catch (error) {
         next(error);
       }
