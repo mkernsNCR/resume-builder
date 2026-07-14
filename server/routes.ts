@@ -11,6 +11,7 @@ import { parseResumeText } from "./resume-parser";
 import { fileTypeFromFile } from "file-type";
 import { ApiError } from "./api-error";
 import { scoreResume } from "./resume-scoring";
+import { matchJobDescription } from "./job-matcher";
 
 const require = createRequire(import.meta.url);
 
@@ -85,6 +86,10 @@ const updateResumeSchema = z.object({
 
 const createResumeSchema = insertResumeSchema.extend({
   id: z.string().uuid().optional(),
+});
+
+const jobMatchSchema = z.object({
+  jobDescription: z.string().trim().min(1).max(50_000),
 });
 
 // Text extraction functions
@@ -243,6 +248,34 @@ export async function registerRoutes(
           throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
         }
         res.json(scoreResume(resume.content));
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  // Match resume against job description
+  app.post(
+    "/api/resumes/:id/match",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const resume = await storage.getResume(req.params.id as string);
+        if (!resume) {
+          throw ApiError.notFound("Resume not found", "RESUME_NOT_FOUND");
+        }
+        const validationResult = jobMatchSchema.safeParse(req.body);
+        if (!validationResult.success) {
+          throw ApiError.badRequest(
+            "jobDescription is required and must not exceed 50000 characters",
+            "VALIDATION_ERROR",
+          );
+        }
+        res.json(
+          matchJobDescription(
+            resume.content,
+            validationResult.data.jobDescription,
+          ),
+        );
       } catch (error) {
         next(error);
       }
