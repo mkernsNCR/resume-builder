@@ -27,6 +27,7 @@ import type {
   ResumeEditorChangeHandler,
   ResumeEditorCommitHandler,
 } from "./types";
+import { useSectionCommit, useSectionUpdater } from "./use-section-history";
 
 interface ExperienceFormProps {
   content: ResumeContent;
@@ -274,21 +275,12 @@ export function ExperienceForm({
     onChange({ experience: [...experiences, newExp] });
   };
 
-  const updateExperience = (
-    id: string,
-    updates: Partial<WorkExperience>,
-    coalesce = false,
-  ) => {
-    const updated = experiences.map((exp) =>
-      exp.id === id ? { ...exp, ...updates } : exp,
-    );
-    onChange(
-      { experience: updated },
-      coalesce ? { coalesceKey: "experience" } : undefined,
-    );
-  };
-
-  const commitTextChange = () => onCommit("experience");
+  const updateExperience = useSectionUpdater(
+    "experience",
+    experiences,
+    onChange,
+  );
+  const commitTextChange = useSectionCommit("experience", onCommit);
 
   const removeExperience = (id: string) => {
     onChange({ experience: experiences.filter((exp) => exp.id !== id) });

@@ -8,6 +8,7 @@ import type {
   ResumeEditorChangeHandler,
   ResumeEditorCommitHandler,
 } from "./types";
+import { useSectionCommit, useSectionUpdater } from "./use-section-history";
 
 interface EducationFormProps {
   content: ResumeContent;
@@ -36,21 +37,12 @@ export function EducationForm({
     onChange({ education: [...educationList, newEdu] });
   };
 
-  const updateEducation = (
-    id: string,
-    updates: Partial<Education>,
-    coalesce = false,
-  ) => {
-    const updated = educationList.map((edu) =>
-      edu.id === id ? { ...edu, ...updates } : edu,
-    );
-    onChange(
-      { education: updated },
-      coalesce ? { coalesceKey: "education" } : undefined,
-    );
-  };
-
-  const commitTextChange = () => onCommit("education");
+  const updateEducation = useSectionUpdater(
+    "education",
+    educationList,
+    onChange,
+  );
+  const commitTextChange = useSectionCommit("education", onCommit);
 
   const removeEducation = (id: string) => {
     onChange({ education: educationList.filter((edu) => edu.id !== id) });

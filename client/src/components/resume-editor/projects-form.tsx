@@ -9,6 +9,7 @@ import type {
   ResumeEditorChangeHandler,
   ResumeEditorCommitHandler,
 } from "./types";
+import { useSectionCommit, useSectionUpdater } from "./use-section-history";
 
 interface ProjectsFormProps {
   content: ResumeContent;
@@ -34,21 +35,8 @@ export function ProjectsForm({
     onChange({ projects: [...projects, newProject] });
   };
 
-  const updateProject = (
-    id: string,
-    updates: Partial<Project>,
-    coalesce = false,
-  ) => {
-    const updated = projects.map((project) =>
-      project.id === id ? { ...project, ...updates } : project,
-    );
-    onChange(
-      { projects: updated },
-      coalesce ? { coalesceKey: "projects" } : undefined,
-    );
-  };
-
-  const commitTextChange = () => onCommit("projects");
+  const updateProject = useSectionUpdater("projects", projects, onChange);
+  const commitTextChange = useSectionCommit("projects", onCommit);
 
   const removeProject = (id: string) => {
     onChange({ projects: projects.filter((project) => project.id !== id) });
