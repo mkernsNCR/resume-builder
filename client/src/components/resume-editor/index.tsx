@@ -5,16 +5,31 @@ import { EducationForm } from "./education-form";
 import { SkillsForm } from "./skills-form";
 import { ProjectsForm } from "./projects-form";
 import type { ResumeContent } from "@shared/schema";
-import { User, Briefcase, GraduationCap, Sparkles, FolderKanban } from "lucide-react";
+import type {
+  ResumeEditorChangeHandler,
+  ResumeEditorCommitHandler,
+} from "./types";
+import {
+  User,
+  Briefcase,
+  GraduationCap,
+  Sparkles,
+  FolderKanban,
+} from "lucide-react";
 
 interface ResumeEditorProps {
   content: ResumeContent;
-  onChange: (updates: Partial<ResumeContent>) => void;
+  onChange: ResumeEditorChangeHandler;
+  onCommit: ResumeEditorCommitHandler;
 }
 
-export function ResumeEditor({ content, onChange }: ResumeEditorProps) {
+export function ResumeEditor({
+  content,
+  onChange,
+  onCommit,
+}: ResumeEditorProps) {
   return (
-    <Tabs defaultValue="personal" className="w-full">
+    <Tabs defaultValue="personal" className="w-full" data-resume-editor>
       <TabsList className="w-full grid grid-cols-5 mb-4">
         <TabsTrigger
           value="personal"
@@ -63,11 +78,19 @@ export function ResumeEditor({ content, onChange }: ResumeEditorProps) {
       </TabsContent>
 
       <TabsContent value="experience">
-        <ExperienceForm content={content} onChange={onChange} />
+        <ExperienceForm
+          content={content}
+          onChange={onChange}
+          onCommit={onCommit}
+        />
       </TabsContent>
 
       <TabsContent value="education">
-        <EducationForm content={content} onChange={onChange} />
+        <EducationForm
+          content={content}
+          onChange={onChange}
+          onCommit={onCommit}
+        />
       </TabsContent>
 
       <TabsContent value="skills">
@@ -75,10 +98,20 @@ export function ResumeEditor({ content, onChange }: ResumeEditorProps) {
       </TabsContent>
 
       <TabsContent value="projects">
-        <ProjectsForm content={content} onChange={onChange} />
+        <ProjectsForm
+          content={content}
+          onChange={onChange}
+          onCommit={onCommit}
+        />
       </TabsContent>
     </Tabs>
   );
 }
 
-export { PersonalInfoForm, ExperienceForm, EducationForm, SkillsForm, ProjectsForm };
+export {
+  PersonalInfoForm,
+  ExperienceForm,
+  EducationForm,
+  SkillsForm,
+  ProjectsForm,
+};

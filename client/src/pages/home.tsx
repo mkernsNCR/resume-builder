@@ -1,14 +1,31 @@
-import { useState, useRef, useCallback, useEffect, type MouseEvent } from "react";
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  type MouseEvent,
+} from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { FileUpload } from "@/components/file-upload";
 import { ExtractedTextDisplay } from "@/components/extracted-text-display";
 import { ResumeEditor } from "@/components/resume-editor";
+import type {
+  ResumeEditorChangeHandler,
+  ResumeHistorySection,
+} from "@/components/resume-editor/types";
 import { TemplateSelector } from "@/components/template-selector";
 import { ResumePreview } from "@/components/resume-templates";
 import { PAGE_WIDTH, PAGE_HEIGHT, TOP_MARGIN } from "@/lib/page-constants";
@@ -26,6 +43,8 @@ import {
   ChevronRight,
   Trash2,
   Copy,
+  Undo2,
+  Redo2,
   Menu,
 } from "lucide-react";
 
@@ -69,7 +88,16 @@ export default function Home() {
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const currentResumeIdRef = useRef<string | null>(null);
   const editorVersionRef = useRef(0);
-  const [content, setContent] = useState<ResumeContent>(defaultContent);
+  const {
+    present: content,
+    set: setContent,
+    commit: commitContent,
+    undo,
+    redo,
+    reset: resetContent,
+    canUndo,
+    canRedo,
+  } = useUndoRedo<ResumeContent>(defaultContent);
   const [template, setTemplate] = useState<ResumeTemplate>("modern");
   const [extractedText, setExtractedText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -78,7 +106,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("upload");
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
   const [duplicatingResumeIds, setDuplicatingResumeIds] = useState<Set<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
@@ -87,9 +115,51 @@ export default function Home() {
   const pendingSaveRef = useRef<SaveRequest | null>(null);
   const activeSaveControllerRef = useRef<AbortController | null>(null);
   const createResumeIdRef = useRef<string | null>(null);
+  const contentRef = useRef(content);
+  const pendingHistoryCommitsRef = useRef<
+    Map<
+      ResumeHistorySection,
+      {
+        baseline: ResumeContent;
+        timer: ReturnType<typeof setTimeout> | null;
+      }
+    >
+  >(new Map());
+
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
+  const clearPendingHistoryCommits = useCallback(() => {
+    for (const pending of Array.from(
+      pendingHistoryCommitsRef.current.values(),
+    )) {
+      if (pending.timer) clearTimeout(pending.timer);
+    }
+    pendingHistoryCommitsRef.current.clear();
+  }, []);
+
+  const commitPendingHistory = useCallback(
+    (section?: ResumeHistorySection) => {
+      const sections = section
+        ? [section]
+        : Array.from(pendingHistoryCommitsRef.current.keys());
+      for (const pendingSection of sections) {
+        const pending = pendingHistoryCommitsRef.current.get(pendingSection);
+        if (!pending) continue;
+        if (pending.timer) clearTimeout(pending.timer);
+        pendingHistoryCommitsRef.current.delete(pendingSection);
+        commitContent(pending.baseline);
+      }
+    },
+    [commitContent],
+  );
+
+  useEffect(() => clearPendingHistoryCommits, [clearPendingHistoryCommits]);
 
   const advanceEditorGeneration = () => {
     editorVersionRef.current += 1;
+    clearPendingHistoryCommits();
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
@@ -109,21 +179,31 @@ export default function Home() {
   const saveMutation = useMutation({
     mutationFn: async (data: SaveRequest) => {
       if (data.resumeId) {
-        return apiRequest("PUT", `/api/resumes/${data.resumeId}`, {
-          title: data.title,
-          content: data.content,
-          template: data.template,
-        }, data.signal);
+        return apiRequest(
+          "PUT",
+          `/api/resumes/${data.resumeId}`,
+          {
+            title: data.title,
+            content: data.content,
+            template: data.template,
+          },
+          data.signal,
+        );
       } else {
         if (!data.createId) {
           throw new Error("Missing create request ID");
         }
-        return apiRequest("POST", "/api/resumes", {
-          id: data.createId,
-          title: data.title,
-          content: data.content,
-          template: data.template,
-        }, data.signal);
+        return apiRequest(
+          "POST",
+          "/api/resumes",
+          {
+            id: data.createId,
+            title: data.title,
+            content: data.content,
+            template: data.template,
+          },
+          data.signal,
+        );
       }
     },
     onSuccess: async (response, variables) => {
@@ -189,40 +269,49 @@ export default function Home() {
     },
     onSuccess: (data) => {
       setExtractedText(data.extractedText || "");
-      
+
       // If we have parsed content, pre-fill the form
       if (data.parsedContent) {
         const parsed = data.parsedContent;
-        setContent(prev => ({
-          ...prev,
-          fullName: parsed.fullName || prev.fullName,
-          title: parsed.title || prev.title,
-          summary: parsed.summary || prev.summary,
+        const parsedContent = {
+          ...content,
+          fullName: parsed.fullName || content.fullName,
+          title: parsed.title || content.title,
+          summary: parsed.summary || content.summary,
           contact: {
-            email: parsed.contact?.email || prev.contact?.email || "",
-            phone: parsed.contact?.phone || prev.contact?.phone || "",
-            location: parsed.contact?.location || prev.contact?.location || "",
-            linkedin: parsed.contact?.linkedin || prev.contact?.linkedin || "",
-            website: parsed.contact?.website || prev.contact?.website || "",
+            email: parsed.contact?.email || content.contact?.email || "",
+            phone: parsed.contact?.phone || content.contact?.phone || "",
+            location:
+              parsed.contact?.location || content.contact?.location || "",
+            linkedin:
+              parsed.contact?.linkedin || content.contact?.linkedin || "",
+            website: parsed.contact?.website || content.contact?.website || "",
           },
-          skills: parsed.skills?.length > 0 ? parsed.skills : prev.skills,
-          experience: parsed.experience?.length > 0 ? parsed.experience : prev.experience,
-          education: parsed.education?.length > 0 ? parsed.education : prev.education,
-          projects: parsed.projects?.length > 0 ? parsed.projects : prev.projects,
-        }));
-        
+          skills: parsed.skills?.length > 0 ? parsed.skills : content.skills,
+          experience:
+            parsed.experience?.length > 0
+              ? parsed.experience
+              : content.experience,
+          education:
+            parsed.education?.length > 0 ? parsed.education : content.education,
+          projects:
+            parsed.projects?.length > 0 ? parsed.projects : content.projects,
+        };
+
         // Create a new resume with the parsed content
         advanceEditorGeneration();
         currentResumeIdRef.current = null;
+        resetContent(parsedContent);
         setCurrentResumeId(null);
       }
-      
+
       // Auto-switch to Edit tab so user can review and edit
       setActiveTab("edit");
-      
+
       toast({
         title: "Resume uploaded successfully",
-        description: "We've extracted your information. Please review and edit as needed.",
+        description:
+          "We've extracted your information. Please review and edit as needed.",
       });
     },
     onError: () => {
@@ -246,7 +335,7 @@ export default function Home() {
         advanceEditorGeneration();
         currentResumeIdRef.current = null;
         setCurrentResumeId(null);
-        setContent(defaultContent);
+        resetContent(defaultContent);
         setExtractedText("");
       }
       setDeletingResumeId(null);
@@ -267,7 +356,7 @@ export default function Home() {
 
   const handleDeleteResume = (
     e: MouseEvent<HTMLButtonElement>,
-    resumeId: string
+    resumeId: string,
   ) => {
     e.stopPropagation(); // Prevent card click
     setDeletingResumeId(resumeId);
@@ -309,7 +398,7 @@ export default function Home() {
 
   const handleDuplicateResume = (
     e: MouseEvent<HTMLButtonElement>,
-    resumeId: string
+    resumeId: string,
   ) => {
     e.stopPropagation();
     setDuplicatingResumeIds((current) => {
@@ -327,9 +416,43 @@ export default function Home() {
     });
   }, []);
 
-  const handleContentChange = useCallback((updates: Partial<ResumeContent>) => {
-    setContent((prev) => ({ ...prev, ...updates }));
-  }, []);
+  const handleContentChange: ResumeEditorChangeHandler = useCallback(
+    (updates, options) => {
+      const coalesceKey = options?.coalesceKey;
+      if (!coalesceKey) {
+        commitPendingHistory();
+        setContent((prev) => {
+          const next = { ...prev, ...updates };
+          contentRef.current = next;
+          return next;
+        });
+        return;
+      }
+
+      for (const pendingSection of Array.from(
+        pendingHistoryCommitsRef.current.keys(),
+      )) {
+        if (pendingSection !== coalesceKey) {
+          commitPendingHistory(pendingSection);
+        }
+      }
+
+      let pending = pendingHistoryCommitsRef.current.get(coalesceKey);
+      if (!pending) {
+        pending = { baseline: contentRef.current, timer: null };
+        pendingHistoryCommitsRef.current.set(coalesceKey, pending);
+      }
+
+      if (pending.timer) clearTimeout(pending.timer);
+      const next = { ...contentRef.current, ...updates };
+      contentRef.current = next;
+      setContent(next, { skipHistory: true });
+      pending.timer = setTimeout(() => {
+        commitPendingHistory(coalesceKey);
+      }, 150);
+    },
+    [commitPendingHistory, setContent],
+  );
 
   const processSaveQueue = useCallback(async () => {
     if (saveInFlightRef.current) return;
@@ -369,30 +492,33 @@ export default function Home() {
     }
   }, [saveResume]);
 
-  const handleSave = useCallback((opts?: { showToast?: boolean }) => {
-    if (opts?.showToast !== false && autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
+  const handleSave = useCallback(
+    (opts?: { showToast?: boolean }) => {
+      if (opts?.showToast !== false && autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
 
-    const title = content.fullName 
-      ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}` 
-      : "Untitled Resume";
-    const resumeId = currentResumeIdRef.current;
-    if (!resumeId && !createResumeIdRef.current) {
-      createResumeIdRef.current = crypto.randomUUID();
-    }
-    pendingSaveRef.current = {
-      content,
-      template,
-      title,
-      resumeId,
-      createId: resumeId ? null : createResumeIdRef.current,
-      editorVersion: editorVersionRef.current,
-      showToast: opts?.showToast,
-    };
-    void processSaveQueue();
-  }, [content, template, processSaveQueue]);
+      const title = content.fullName
+        ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}`
+        : "Untitled Resume";
+      const resumeId = currentResumeIdRef.current;
+      if (!resumeId && !createResumeIdRef.current) {
+        createResumeIdRef.current = crypto.randomUUID();
+      }
+      pendingSaveRef.current = {
+        content,
+        template,
+        title,
+        resumeId,
+        createId: resumeId ? null : createResumeIdRef.current,
+        editorVersion: editorVersionRef.current,
+        showToast: opts?.showToast,
+      };
+      void processSaveQueue();
+    },
+    [content, template, processSaveQueue],
+  );
 
   // Autosave with debouncing — saves 2s after content/template stops changing
   const skipAutosaveFingerprintRef = useRef<string | null>(
@@ -417,6 +543,34 @@ export default function Home() {
     };
   }, [content, template, handleSave]);
 
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable === true;
+      const isInsideResumeEditor =
+        target?.closest("[data-resume-editor]") != null;
+      if (!isMod || (isTyping && !isInsideResumeEditor)) return;
+
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        commitPendingHistory();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        commitPendingHistory();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [commitPendingHistory, undo, redo]);
+
   // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -438,45 +592,62 @@ export default function Home() {
 
       // Try to find the visible preview, but fall back to creating a temporary one
       let resumePreview: Element | null = null;
-      const contentScroll = printRef.current?.querySelector(".resume-content-scroll");
+      const contentScroll = printRef.current?.querySelector(
+        ".resume-content-scroll",
+      );
       resumePreview = contentScroll?.querySelector(".resume-preview") ?? null;
-      
+
       // If visible preview is not found, create a temporary hidden one for export
       let temporaryPreviewContainer: HTMLDivElement | null = null;
       if (!resumePreview) {
         // Import and render the template directly for export
-        const { ModernTemplate } = await import("@/components/resume-templates/modern-template");
-        const { ClassicTemplate } = await import("@/components/resume-templates/classic-template");
-        const { MinimalTemplate } = await import("@/components/resume-templates/minimal-template");
-        const { CreativeTemplate } = await import("@/components/resume-templates/creative-template");
+        const { ModernTemplate } =
+          await import("@/components/resume-templates/modern-template");
+        const { ClassicTemplate } =
+          await import("@/components/resume-templates/classic-template");
+        const { MinimalTemplate } =
+          await import("@/components/resume-templates/minimal-template");
+        const { CreativeTemplate } =
+          await import("@/components/resume-templates/creative-template");
         const ReactDOMClient = await import("react-dom/client");
         const React = await import("react");
-        
+
         temporaryPreviewContainer = document.createElement("div");
         temporaryPreviewContainer.style.position = "absolute";
         temporaryPreviewContainer.style.left = "-9999px";
         temporaryPreviewContainer.style.top = "0";
         document.body.appendChild(temporaryPreviewContainer);
-        
-        const TemplateComponent = 
-          template === "modern" ? ModernTemplate :
-          template === "classic" ? ClassicTemplate :
-          template === "minimal" ? MinimalTemplate :
-          template === "creative" ? CreativeTemplate : ModernTemplate;
-        
+
+        const TemplateComponent =
+          template === "modern"
+            ? ModernTemplate
+            : template === "classic"
+              ? ClassicTemplate
+              : template === "minimal"
+                ? MinimalTemplate
+                : template === "creative"
+                  ? CreativeTemplate
+                  : ModernTemplate;
+
         const root = ReactDOMClient.createRoot(temporaryPreviewContainer);
-        root.render(React.createElement(TemplateComponent, { content, allowOverflow: true }));
-        
+        root.render(
+          React.createElement(TemplateComponent, {
+            content,
+            allowOverflow: true,
+          }),
+        );
+
         // Wait for render
-        await new Promise(r => setTimeout(r, 200));
-        
-        resumePreview = temporaryPreviewContainer.querySelector(".resume-preview");
+        await new Promise((r) => setTimeout(r, 200));
+
+        resumePreview =
+          temporaryPreviewContainer.querySelector(".resume-preview");
         if (!resumePreview) {
           root.unmount();
           document.body.removeChild(temporaryPreviewContainer);
           throw new Error("Failed to create temporary preview for export");
         }
-        
+
         // Unmount the React root now that we've found the preview element
         root.unmount();
       }
@@ -486,14 +657,15 @@ export default function Home() {
       measureClone.style.height = "auto";
       measureClone.style.overflow = "visible";
       tempContainer.appendChild(measureClone);
-      
+
       // Wait for render
-      await new Promise(r => setTimeout(r, 100));
-      
+      await new Promise((r) => setTimeout(r, 100));
+
       // Find all sections and measure their positions
       const sections = measureClone.querySelectorAll("section, header");
-      const sectionData: { el: HTMLElement; top: number; height: number }[] = [];
-      
+      const sectionData: { el: HTMLElement; top: number; height: number }[] =
+        [];
+
       sections.forEach((section) => {
         const el = section as HTMLElement;
         const rect = el.getBoundingClientRect();
@@ -504,7 +676,7 @@ export default function Home() {
           height: rect.height,
         });
       });
-      
+
       // Add padding before sections that would be split across pages
       let addedPadding = 0;
       for (const section of sectionData) {
@@ -512,21 +684,25 @@ export default function Home() {
         const sectionEnd = adjustedTop + section.height;
         const pageStart = Math.floor(adjustedTop / PAGE_HEIGHT) * PAGE_HEIGHT;
         const pageEnd = pageStart + PAGE_HEIGHT;
-        
+
         // If section starts on one page but ends on another, push it to next page
         // Only do this if the section fits on a single page
-        if (adjustedTop >= pageStart && sectionEnd > pageEnd && section.height < PAGE_HEIGHT) {
+        if (
+          adjustedTop >= pageStart &&
+          sectionEnd > pageEnd &&
+          section.height < PAGE_HEIGHT
+        ) {
           const paddingNeeded = pageEnd - adjustedTop;
           section.el.style.marginTop = `${paddingNeeded + 20}px`; // 20px extra spacing
           addedPadding += paddingNeeded + 20;
         }
       }
-      
+
       // Re-measure after padding adjustments
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
       const totalHeight = measureClone.scrollHeight;
       const numPages = Math.max(1, Math.ceil(totalHeight / PAGE_HEIGHT));
-      
+
       // Create PDF (US Letter size: 8.5 x 11 inches = 612 x 792 points)
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -538,7 +714,7 @@ export default function Home() {
       const imgHeight = 792;
 
       // Render each page from the adjusted clone
-      
+
       for (let pageNum = 0; pageNum < numPages; pageNum++) {
         // Create a page container with clipped content
         const pageContainer = document.createElement("div");
@@ -547,17 +723,16 @@ export default function Home() {
         pageContainer.style.overflow = "hidden";
         pageContainer.style.position = "relative";
         pageContainer.style.backgroundColor = "white";
-        
+
         // Clone the adjusted content for this page
         const pageContent = measureClone.cloneNode(true) as HTMLElement;
-        
+
         // Calculate content offset - account for top margin on subsequent pages
-        const contentOffset = pageNum === 0 
-          ? 0 
-          : (pageNum * PAGE_HEIGHT) - TOP_MARGIN;
+        const contentOffset =
+          pageNum === 0 ? 0 : pageNum * PAGE_HEIGHT - TOP_MARGIN;
         pageContent.style.transform = `translateY(-${contentOffset}px)`;
         pageContainer.appendChild(pageContent);
-        
+
         // For pages after the first, add a white overlay to cover the top margin area
         // This prevents any bleeding content from showing
         if (pageNum > 0) {
@@ -571,7 +746,7 @@ export default function Home() {
           topOverlay.style.zIndex = "10";
           pageContainer.appendChild(topOverlay);
         }
-        
+
         // Use a separate render container
         const renderContainer = document.createElement("div");
         renderContainer.style.position = "absolute";
@@ -592,12 +767,12 @@ export default function Home() {
         });
 
         const imgData = canvas.toDataURL("image/png");
-        
+
         if (pageNum > 0) {
           pdf.addPage();
         }
         pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-        
+
         document.body.removeChild(renderContainer);
       }
 
@@ -607,7 +782,10 @@ export default function Home() {
 
       // Cleanup
       document.body.removeChild(tempContainer);
-      if (temporaryPreviewContainer && document.body.contains(temporaryPreviewContainer)) {
+      if (
+        temporaryPreviewContainer &&
+        document.body.contains(temporaryPreviewContainer)
+      ) {
         document.body.removeChild(temporaryPreviewContainer);
       }
 
@@ -637,7 +815,7 @@ export default function Home() {
     advanceEditorGeneration();
     currentResumeIdRef.current = resume.id;
     setCurrentResumeId(resume.id);
-    setContent(nextContent);
+    resetContent(nextContent);
     setTemplate(nextTemplate);
   };
 
@@ -649,7 +827,7 @@ export default function Home() {
     advanceEditorGeneration();
     currentResumeIdRef.current = null;
     setCurrentResumeId(null);
-    setContent(defaultContent);
+    resetContent(defaultContent);
     setTemplate("modern");
     setExtractedText("");
   };
@@ -714,22 +892,31 @@ export default function Home() {
                             }}
                             data-testid={`resume-card-mobile-${resume.id}`}
                           >
-                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                              currentResumeId === resume.id
-                                ? "bg-primary/10 border-primary/20 text-primary"
-                                : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
-                            }`}>
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                                currentResumeId === resume.id
+                                  ? "bg-primary/10 border-primary/20 text-primary"
+                                  : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
+                              }`}
+                            >
                               <FileText className="h-5 w-5" />
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
-                                currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
-                              }`}>
+                              <h3
+                                className={`font-medium text-sm truncate leading-none mb-1.5 ${
+                                  currentResumeId === resume.id
+                                    ? "text-foreground"
+                                    : "text-muted-foreground group-hover:text-foreground"
+                                }`}
+                              >
                                 {resume.title || "Untitled Resume"}
                               </h3>
                               <p className="text-[11px] text-muted-foreground/80 truncate">
-                                Edited {new Date(resume.updatedAt).toLocaleDateString()}
+                                Edited{" "}
+                                {new Date(
+                                  resume.updatedAt,
+                                ).toLocaleDateString()}
                               </p>
                             </div>
                           </button>
@@ -785,10 +972,34 @@ export default function Home() {
               </SheetContent>
             </Sheet>
             <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
-            <h1 className="text-base sm:text-lg font-semibold truncate">Resume Builder</h1>
+            <h1 className="text-base sm:text-lg font-semibold truncate">
+              Resume Builder
+            </h1>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 pr-10 sm:pr-12 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={undo}
+              disabled={!canUndo}
+              data-testid="button-undo"
+              aria-label="Undo"
+              className="h-8 w-8"
+            >
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={redo}
+              disabled={!canRedo}
+              data-testid="button-redo"
+              aria-label="Redo"
+              className="h-8 w-8"
+            >
+              <Redo2 className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -858,22 +1069,29 @@ export default function Home() {
                       onClick={() => loadResume(resume)}
                       data-testid={`resume-card-${resume.id}`}
                     >
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                        currentResumeId === resume.id
-                          ? "bg-primary/10 border-primary/20 text-primary"
-                          : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
-                      }`}>
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                          currentResumeId === resume.id
+                            ? "bg-primary/10 border-primary/20 text-primary"
+                            : "bg-muted/50 border-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground"
+                        }`}
+                      >
                         <FileText className="h-5 w-5" />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className={`font-medium text-sm truncate leading-none mb-1.5 ${
-                          currentResumeId === resume.id ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
-                        }`}>
+                        <h3
+                          className={`font-medium text-sm truncate leading-none mb-1.5 ${
+                            currentResumeId === resume.id
+                              ? "text-foreground"
+                              : "text-muted-foreground group-hover:text-foreground"
+                          }`}
+                        >
                           {resume.title || "Untitled Resume"}
                         </h3>
                         <p className="text-[11px] text-muted-foreground/80 truncate">
-                          Edited {new Date(resume.updatedAt).toLocaleDateString()}
+                          Edited{" "}
+                          {new Date(resume.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </button>
@@ -1006,7 +1224,8 @@ export default function Home() {
                           Get Started with Your Resume
                         </h2>
                         <p className="text-muted-foreground">
-                          Upload your existing resume to automatically extract your information
+                          Upload your existing resume to automatically extract
+                          your information
                         </p>
                       </div>
                       <FileUpload
@@ -1029,7 +1248,7 @@ export default function Home() {
                               getAutosaveFingerprint(defaultContent, template);
                             advanceEditorGeneration();
                             currentResumeIdRef.current = null;
-                            setContent(defaultContent);
+                            resetContent(defaultContent);
                             setCurrentResumeId(null);
                             setActiveTab("edit");
                           }}
@@ -1049,6 +1268,7 @@ export default function Home() {
                       key={currentResumeId || "new"}
                       content={content}
                       onChange={handleContentChange}
+                      onCommit={commitPendingHistory}
                     />
                   </TabsContent>
 
@@ -1091,11 +1311,15 @@ export default function Home() {
                           <div
                             className="origin-top-left"
                             style={{
-                              transform: 'scale(0.45)',
-                              width: '816px',
+                              transform: "scale(0.45)",
+                              width: "816px",
                             }}
                           >
-                            <ResumePreview content={content} template={template} paginated />
+                            <ResumePreview
+                              content={content}
+                              template={template}
+                              paginated
+                            />
                           </div>
                         </div>
                       </div>
@@ -1108,7 +1332,10 @@ export default function Home() {
 
           {/* Preview Panel */}
           {showPreview && (
-            <div className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30" data-testid="live-preview-panel">
+            <div
+              className="hidden lg:flex lg:w-1/2 flex-col bg-muted/30"
+              data-testid="live-preview-panel"
+            >
               <div className="border-b px-4 py-2 bg-card flex items-center gap-2">
                 <Eye className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Live Preview</span>
@@ -1125,12 +1352,16 @@ export default function Home() {
                       ref={printRef}
                       className="origin-top-left"
                       style={{
-                        transform: 'scale(0.65)',
-                        transformOrigin: 'top left',
-                        width: '816px',
+                        transform: "scale(0.65)",
+                        transformOrigin: "top left",
+                        width: "816px",
                       }}
                     >
-                      <ResumePreview content={content} template={template} paginated />
+                      <ResumePreview
+                        content={content}
+                        template={template}
+                        paginated
+                      />
                     </div>
                   </div>
                 </div>
