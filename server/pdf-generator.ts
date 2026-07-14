@@ -94,16 +94,7 @@ export function generateResumePDF(
         y += descHeight + 4;
       }
       if (exp.highlights && exp.highlights.length > 0) {
-        doc.fontSize(10).font("Helvetica");
-        for (const highlight of exp.highlights) {
-          const bulletText = `• ${highlight}`;
-          const hHeight = doc.heightOfString(bulletText, {
-            width: PAGE_WIDTH - 2 * MARGIN,
-          });
-          y = checkPageBreak(doc, y, hHeight);
-          doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
-          y += hHeight + 2;
-        }
+        y = renderHighlights(doc, exp.highlights, y);
       }
       y += 8;
     }
@@ -174,16 +165,7 @@ export function generateResumePDF(
         y += pHeight + 4;
       }
       if (project.highlights && project.highlights.length > 0) {
-        doc.fontSize(10).font("Helvetica");
-        for (const highlight of project.highlights) {
-          const bulletText = `• ${highlight}`;
-          const hHeight = doc.heightOfString(bulletText, {
-            width: PAGE_WIDTH - 2 * MARGIN,
-          });
-          y = checkPageBreak(doc, y, hHeight);
-          doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
-          y += hHeight + 2;
-        }
+        y = renderHighlights(doc, project.highlights, y);
       }
       y += 8;
     }
@@ -196,6 +178,24 @@ function formatDateRange(startDate?: string, endDate?: string): string {
   if (startDate && endDate) return `${startDate} — ${endDate}`;
   if (startDate) return `${startDate} — Present`;
   return endDate || "";
+}
+
+function renderHighlights(
+  doc: InstanceType<typeof PDFDocument>,
+  highlights: string[],
+  y: number,
+): number {
+  doc.fontSize(10).font("Helvetica");
+  for (const highlight of highlights) {
+    const bulletText = `• ${highlight}`;
+    const highlightHeight = doc.heightOfString(bulletText, {
+      width: PAGE_WIDTH - 2 * MARGIN,
+    });
+    y = checkPageBreak(doc, y, highlightHeight);
+    doc.text(bulletText, MARGIN, y, { width: PAGE_WIDTH - 2 * MARGIN });
+    y += highlightHeight + 2;
+  }
+  return y;
 }
 
 function addSectionHeader(

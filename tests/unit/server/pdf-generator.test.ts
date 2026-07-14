@@ -62,7 +62,6 @@ async function renderPdf(resumeContent: ResumeContent): Promise<Buffer> {
 async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
   const parser = new PDFParse({ data: pdfBuffer });
   try {
-    await parser.load();
     const result = await parser.getText();
     return result.pages.map((page) => page.text).join("\n");
   } finally {
