@@ -19,7 +19,7 @@ test.describe("Keyboard shortcuts", () => {
 
     await page.keyboard.press("1");
     const fullName = page.getByTestId("input-fullname");
-    await fullName.fill("Candidate 5");
+    await fullName.pressSequentially("Candidate 5");
 
     await expect(page.getByTestId("tab-personal")).toHaveAttribute(
       "data-state",

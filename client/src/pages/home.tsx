@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { FileUpload } from "@/components/file-upload";
 import { ExtractedTextDisplay } from "@/components/extracted-text-display";
-import { ResumeEditor } from "@/components/resume-editor";
+import { EDITOR_TABS, ResumeEditor } from "@/components/resume-editor";
 import type {
   ResumeEditorChangeHandler,
   ResumeHistorySection,
@@ -111,6 +111,7 @@ export default function Home() {
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const isExportingRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
   const pendingSaveRef = useRef<SaveRequest | null>(null);
@@ -549,6 +550,8 @@ export default function Home() {
 
   // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
   const handleExportPDF = useCallback(async () => {
+    if (isExportingRef.current) return;
+    isExportingRef.current = true;
     setIsExporting(true);
 
     try {
@@ -777,6 +780,7 @@ export default function Home() {
         variant: "destructive",
       });
     } finally {
+      isExportingRef.current = false;
       setIsExporting(false);
     }
   }, [content, template, toast]);
@@ -811,24 +815,25 @@ export default function Home() {
           handleSave();
         } else if (key === "e") {
           e.preventDefault();
-          handleExportPDF();
+          if (!isExporting) {
+            void handleExportPDF();
+          }
         }
         return;
       }
 
       // Tab switching with 1-5 (only when not typing)
       if (!isTyping && e.key >= "1" && e.key <= "5") {
-        const tabs = ["personal", "experience", "education", "skills", "projects"];
         const idx = parseInt(e.key, 10) - 1;
-        if (idx < tabs.length) {
+        if (idx < EDITOR_TABS.length) {
           setActiveTab("edit");
-          setActiveEditorTab(tabs[idx]);
+          setActiveEditorTab(EDITOR_TABS[idx]);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [commitPendingHistory, undo, redo, handleSave, handleExportPDF]);
+  }, [commitPendingHistory, undo, redo, handleSave, handleExportPDF, isExporting]);
 
   const loadResume = (resume: Resume) => {
     const nextContent = resume.content as ResumeContent;

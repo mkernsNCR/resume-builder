@@ -9,6 +9,7 @@ import type {
   ResumeEditorChangeHandler,
   ResumeEditorCommitHandler,
 } from "./types";
+import { EDITOR_TABS } from "./types";
 import {
   User,
   Briefcase,
@@ -41,7 +42,7 @@ export function ResumeEditor({
     >
       <TabsList className="w-full grid grid-cols-5 mb-4">
         <TabsTrigger
-          value="personal"
+          value={EDITOR_TABS[0]}
           className="flex items-center gap-1.5 text-xs sm:text-sm"
           data-testid="tab-personal"
         >
@@ -49,7 +50,7 @@ export function ResumeEditor({
           <span className="hidden sm:inline">Personal</span>
         </TabsTrigger>
         <TabsTrigger
-          value="experience"
+          value={EDITOR_TABS[1]}
           className="flex items-center gap-1.5 text-xs sm:text-sm"
           data-testid="tab-experience"
         >
@@ -57,7 +58,7 @@ export function ResumeEditor({
           <span className="hidden sm:inline">Experience</span>
         </TabsTrigger>
         <TabsTrigger
-          value="education"
+          value={EDITOR_TABS[2]}
           className="flex items-center gap-1.5 text-xs sm:text-sm"
           data-testid="tab-education"
         >
@@ -65,7 +66,7 @@ export function ResumeEditor({
           <span className="hidden sm:inline">Education</span>
         </TabsTrigger>
         <TabsTrigger
-          value="skills"
+          value={EDITOR_TABS[3]}
           className="flex items-center gap-1.5 text-xs sm:text-sm"
           data-testid="tab-skills"
         >
@@ -73,7 +74,7 @@ export function ResumeEditor({
           <span className="hidden sm:inline">Skills</span>
         </TabsTrigger>
         <TabsTrigger
-          value="projects"
+          value={EDITOR_TABS[4]}
           className="flex items-center gap-1.5 text-xs sm:text-sm"
           data-testid="tab-projects"
         >
@@ -118,6 +119,7 @@ export function ResumeEditor({
 }
 
 export {
+  EDITOR_TABS,
   PersonalInfoForm,
   ExperienceForm,
   EducationForm,
