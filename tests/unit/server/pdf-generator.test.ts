@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { PDFParse } from "pdf-parse";
 import { generateResumePDF } from "../../../server/pdf-generator";
 import type { ResumeContent } from "../../../shared/schema";
 
@@ -58,6 +59,17 @@ async function renderPdf(resumeContent: ResumeContent): Promise<Buffer> {
   });
 }
 
+async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: pdfBuffer });
+  try {
+    await parser.load();
+    const result = await parser.getText();
+    return result.pages.map((page) => page.text).join("\n");
+  } finally {
+    await parser.destroy();
+  }
+}
+
 describe("generateResumePDF", () => {
   it("produces a PDF document with content", async () => {
     const pdfBuffer = await renderPdf(content);
@@ -114,5 +126,12 @@ describe("generateResumePDF", () => {
     const pageCount =
       pdfBuffer.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
     expect(pageCount).toBeGreaterThan(1);
+  });
+
+  it("separates open-ended dates from Present", async () => {
+    const pdfText = await extractPdfText(await renderPdf(content));
+
+    expect(pdfText).toContain("2020 — Present");
+    expect(pdfText).toContain("2014 — Present");
   });
 });

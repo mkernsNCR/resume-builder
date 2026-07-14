@@ -76,7 +76,7 @@ export function generateResumePDF(
       if (exp.startDate || exp.endDate) {
         doc.fontSize(9).font("Helvetica-Oblique");
         doc.fillColor("#777777");
-        const dateRange = `${exp.startDate || ""}${exp.startDate && exp.endDate ? " — " : ""}${exp.endDate || "Present"}`;
+        const dateRange = formatDateRange(exp.startDate, exp.endDate);
         y = checkPageBreak(doc, y, 12);
         doc.text(dateRange, MARGIN, y);
         y += 12;
@@ -127,7 +127,7 @@ export function generateResumePDF(
       if (edu.startDate || edu.endDate) {
         doc.fontSize(9).font("Helvetica-Oblique");
         doc.fillColor("#777777");
-        const dateRange = `${edu.startDate || ""}${edu.startDate && edu.endDate ? " — " : ""}${edu.endDate || "Present"}`;
+        const dateRange = formatDateRange(edu.startDate, edu.endDate);
         y = checkPageBreak(doc, y, 12);
         doc.text(dateRange, MARGIN, y);
         y += 12;
@@ -190,6 +190,12 @@ export function generateResumePDF(
   }
 
   return doc;
+}
+
+function formatDateRange(startDate?: string, endDate?: string): string {
+  if (startDate && endDate) return `${startDate} — ${endDate}`;
+  if (startDate) return `${startDate} — Present`;
+  return endDate || "";
 }
 
 function addSectionHeader(
