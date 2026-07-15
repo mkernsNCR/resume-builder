@@ -29,8 +29,12 @@ import type {
 } from "@/components/resume-editor/types";
 import { TemplateSelector } from "@/components/template-selector";
 import { ResumePreview } from "@/components/resume-templates";
-import { PAGE_WIDTH, PAGE_HEIGHT, TOP_MARGIN } from "@/lib/page-constants";
-import type { Resume, ResumeContent, ResumeTemplate } from "@shared/schema";
+import {
+  pdfFilename,
+  type Resume,
+  type ResumeContent,
+  type ResumeTemplate,
+} from "@shared/schema";
 import {
   FileText,
   Download,
@@ -113,7 +117,6 @@ export default function Home() {
     () => new Set(),
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
   const isExportingRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
@@ -417,12 +420,15 @@ export default function Home() {
   };
 
   const uploadFile = uploadMutation.mutate;
-  const handleFileSelect = useCallback((file: File) => {
-    setIsUploading(true);
-    uploadFile(file, {
-      onSettled: () => setIsUploading(false),
-    });
-  }, [uploadFile]);
+  const handleFileSelect = useCallback(
+    (file: File) => {
+      setIsUploading(true);
+      uploadFile(file, {
+        onSettled: () => setIsUploading(false),
+      });
+    },
+    [uploadFile],
+  );
 
   const handleContentChange: ResumeEditorChangeHandler = useCallback(
     (updates, options) => {
@@ -551,229 +557,37 @@ export default function Home() {
     };
   }, [content, template, handleSave]);
 
-  // Client-side PDF export using html2canvas + jsPDF (lazy-loaded)
+  // Server-side PDF export keeps text selectable and uses deterministic page
+  // layout instead of slicing a browser screenshot at fixed pixel offsets.
   const handleExportPDF = useCallback(async () => {
     if (!content.fullName || isExportingRef.current) return;
     isExportingRef.current = true;
     setIsExporting(true);
 
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-
-      // Create a temporary container for full-size rendering
-      const tempContainer = document.createElement("div");
-      tempContainer.style.position = "absolute";
-      tempContainer.style.left = "-9999px";
-      tempContainer.style.top = "0";
-      tempContainer.style.width = `${PAGE_WIDTH}px`;
-      tempContainer.style.backgroundColor = "white";
-      document.body.appendChild(tempContainer);
-
-      // Try to find the visible preview, but fall back to creating a temporary one
-      let resumePreview: Element | null = null;
-      const contentScroll = printRef.current?.querySelector(
-        ".resume-content-scroll",
-      );
-      resumePreview = contentScroll?.querySelector(".resume-preview") ?? null;
-
-      // If visible preview is not found, create a temporary hidden one for export
-      let temporaryPreviewContainer: HTMLDivElement | null = null;
-      if (!resumePreview) {
-        // Import and render the template directly for export
-        const { ModernTemplate } =
-          await import("@/components/resume-templates/modern-template");
-        const { ClassicTemplate } =
-          await import("@/components/resume-templates/classic-template");
-        const { MinimalTemplate } =
-          await import("@/components/resume-templates/minimal-template");
-        const { CreativeTemplate } =
-          await import("@/components/resume-templates/creative-template");
-        const ReactDOMClient = await import("react-dom/client");
-        const React = await import("react");
-
-        temporaryPreviewContainer = document.createElement("div");
-        temporaryPreviewContainer.style.position = "absolute";
-        temporaryPreviewContainer.style.left = "-9999px";
-        temporaryPreviewContainer.style.top = "0";
-        document.body.appendChild(temporaryPreviewContainer);
-
-        const TemplateComponent =
-          template === "modern"
-            ? ModernTemplate
-            : template === "classic"
-              ? ClassicTemplate
-              : template === "minimal"
-                ? MinimalTemplate
-                : template === "creative"
-                  ? CreativeTemplate
-                  : ModernTemplate;
-
-        const root = ReactDOMClient.createRoot(temporaryPreviewContainer);
-        root.render(
-          React.createElement(TemplateComponent, {
-            content,
-            allowOverflow: true,
-          }),
-        );
-
-        // Wait for render
-        await new Promise((r) => setTimeout(r, 200));
-
-        resumePreview =
-          temporaryPreviewContainer.querySelector(".resume-preview");
-        if (!resumePreview) {
-          root.unmount();
-          document.body.removeChild(temporaryPreviewContainer);
-          throw new Error("Failed to create temporary preview for export");
-        }
-
-        // Unmount the React root now that we've found the preview element
-        root.unmount();
-      }
-
-      // Clone for measurement and modification
-      const measureClone = resumePreview.cloneNode(true) as HTMLElement;
-      measureClone.style.height = "auto";
-      measureClone.style.overflow = "visible";
-      tempContainer.appendChild(measureClone);
-
-      // Wait for render
-      await new Promise((r) => setTimeout(r, 100));
-
-      // Find all sections and measure their positions
-      const sections = measureClone.querySelectorAll("section, header");
-      const sectionData: { el: HTMLElement; top: number; height: number }[] =
-        [];
-
-      sections.forEach((section) => {
-        const el = section as HTMLElement;
-        const rect = el.getBoundingClientRect();
-        const containerRect = measureClone.getBoundingClientRect();
-        sectionData.push({
-          el,
-          top: rect.top - containerRect.top,
-          height: rect.height,
-        });
+      const response = await apiRequest("POST", "/api/resumes/pdf", {
+        content,
+        template,
+        title: content.fullName,
       });
-
-      // Add padding before sections that would be split across pages
-      let addedPadding = 0;
-      for (const section of sectionData) {
-        const adjustedTop = section.top + addedPadding;
-        const sectionEnd = adjustedTop + section.height;
-        const pageStart = Math.floor(adjustedTop / PAGE_HEIGHT) * PAGE_HEIGHT;
-        const pageEnd = pageStart + PAGE_HEIGHT;
-
-        // If section starts on one page but ends on another, push it to next page
-        // Only do this if the section fits on a single page
-        if (
-          adjustedTop >= pageStart &&
-          sectionEnd > pageEnd &&
-          section.height < PAGE_HEIGHT
-        ) {
-          const paddingNeeded = pageEnd - adjustedTop;
-          section.el.style.marginTop = `${paddingNeeded + 20}px`; // 20px extra spacing
-          addedPadding += paddingNeeded + 20;
-        }
+      const pdfBlob = await response.blob();
+      if (pdfBlob.size === 0) {
+        throw new Error("The PDF export was empty");
       }
 
-      // Re-measure after padding adjustments
-      await new Promise((r) => setTimeout(r, 50));
-      const totalHeight = measureClone.scrollHeight;
-      const numPages = Math.max(1, Math.ceil(totalHeight / PAGE_HEIGHT));
-
-      // Create PDF (US Letter size: 8.5 x 11 inches = 612 x 792 points)
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "pt",
-        format: "letter",
-      });
-
-      const imgWidth = 612;
-      const imgHeight = 792;
-
-      // Render each page from the adjusted clone
-
-      for (let pageNum = 0; pageNum < numPages; pageNum++) {
-        // Create a page container with clipped content
-        const pageContainer = document.createElement("div");
-        pageContainer.style.width = `${PAGE_WIDTH}px`;
-        pageContainer.style.height = `${PAGE_HEIGHT}px`;
-        pageContainer.style.overflow = "hidden";
-        pageContainer.style.position = "relative";
-        pageContainer.style.backgroundColor = "white";
-
-        // Clone the adjusted content for this page
-        const pageContent = measureClone.cloneNode(true) as HTMLElement;
-
-        // Calculate content offset - account for top margin on subsequent pages
-        const contentOffset =
-          pageNum === 0 ? 0 : pageNum * PAGE_HEIGHT - TOP_MARGIN;
-        pageContent.style.transform = `translateY(-${contentOffset}px)`;
-        pageContainer.appendChild(pageContent);
-
-        // For pages after the first, add a white overlay to cover the top margin area
-        // This prevents any bleeding content from showing
-        if (pageNum > 0) {
-          const topOverlay = document.createElement("div");
-          topOverlay.style.position = "absolute";
-          topOverlay.style.top = "0";
-          topOverlay.style.left = "0";
-          topOverlay.style.width = "100%";
-          topOverlay.style.height = `${TOP_MARGIN}px`;
-          topOverlay.style.backgroundColor = "white";
-          topOverlay.style.zIndex = "10";
-          pageContainer.appendChild(topOverlay);
-        }
-
-        // Use a separate render container
-        const renderContainer = document.createElement("div");
-        renderContainer.style.position = "absolute";
-        renderContainer.style.left = "-9999px";
-        renderContainer.style.top = "0";
-        document.body.appendChild(renderContainer);
-        renderContainer.appendChild(pageContainer);
-
-        // Generate canvas for this page
-        const canvas = await html2canvas(pageContainer, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ffffff",
-          width: PAGE_WIDTH,
-          height: PAGE_HEIGHT,
-          windowWidth: PAGE_WIDTH,
-        });
-
-        const imgData = canvas.toDataURL("image/png");
-
-        if (pageNum > 0) {
-          pdf.addPage();
-        }
-        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-
-        document.body.removeChild(renderContainer);
-      }
-
-      // Download
-      const fileName = `${content.fullName || "resume"}.pdf`;
-      pdf.save(fileName);
-
-      // Cleanup
-      document.body.removeChild(tempContainer);
-      if (
-        temporaryPreviewContainer &&
-        document.body.contains(temporaryPreviewContainer)
-      ) {
-        document.body.removeChild(temporaryPreviewContainer);
-      }
+      const objectUrl = URL.createObjectURL(pdfBlob);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = objectUrl;
+      downloadLink.download = pdfFilename(content.fullName);
+      downloadLink.style.display = "none";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 
       toast({
         title: "Export complete",
-        description: `Your resume has been downloaded as PDF${numPages > 1 ? ` (${numPages} pages)` : ""}.`,
+        description: "Your print-ready PDF has been downloaded.",
       });
     } catch (error) {
       console.error("PDF export error:", error);
@@ -836,7 +650,14 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [commitPendingHistory, undo, redo, handleSave, handleExportPDF, isExporting]);
+  }, [
+    commitPendingHistory,
+    undo,
+    redo,
+    handleSave,
+    handleExportPDF,
+    isExporting,
+  ]);
 
   const loadResume = (resume: Resume) => {
     const nextContent = resume.content as ResumeContent;
@@ -1387,7 +1208,6 @@ export default function Home() {
                     }}
                   >
                     <div
-                      ref={printRef}
                       className="origin-top-left"
                       style={{
                         transform: "scale(0.65)",

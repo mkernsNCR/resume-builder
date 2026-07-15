@@ -17,42 +17,44 @@ A modern, full-stack resume builder application that allows users to create, edi
 ## 🛠 Tech Stack
 
 ### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | 18.3.1 | UI framework |
-| TypeScript | 5.6.3 | Type safety |
-| TailwindCSS | 3.4.17 | Styling |
-| Radix UI | Latest | Accessible components |
-| TanStack Query | 5.60.5 | Server state management |
-| Wouter | 3.3.5 | Client-side routing |
-| Framer Motion | 11.13.1 | Animations |
-| Lucide React | 0.453.0 | Icons |
+
+| Technology     | Version | Purpose                 |
+| -------------- | ------- | ----------------------- |
+| React          | 18.3.1  | UI framework            |
+| TypeScript     | 5.6.3   | Type safety             |
+| TailwindCSS    | 3.4.17  | Styling                 |
+| Radix UI       | Latest  | Accessible components   |
+| TanStack Query | 5.60.5  | Server state management |
+| Wouter         | 3.3.5   | Client-side routing     |
+| Framer Motion  | 11.13.1 | Animations              |
+| Lucide React   | 0.453.0 | Icons                   |
 
 ### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Express | 5.0.1 | HTTP server |
-| Node.js | 20.x | Runtime |
-| PostgreSQL | - | Database |
-| Drizzle ORM | 0.39.3 | Database ORM |
+
+| Technology  | Version | Purpose      |
+| ----------- | ------- | ------------ |
+| Express     | 5.0.1   | HTTP server  |
+| Node.js     | 20.x    | Runtime      |
+| PostgreSQL  | -       | Database     |
+| Drizzle ORM | 0.39.3  | Database ORM |
 
 ### Document Processing
-| Technology | Purpose |
-|------------|---------|
-| pdf.js | PDF text extraction |
-| Mammoth | DOCX text extraction |
-| html2canvas | DOM to canvas rendering |
-| jsPDF | PDF generation |
+
+| Technology | Purpose                        |
+| ---------- | ------------------------------ |
+| pdf.js     | PDF text extraction            |
+| Mammoth    | DOCX text extraction           |
+| PDFKit     | Selectable-text PDF generation |
 
 ### Development
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Vite | 7.3.0 | Build tool & dev server |
-| tsx | 4.20.5 | TypeScript execution |
-| Drizzle Kit | 0.31.8 | Database migrations |
-| Vitest | 4.x | Unit testing |
-| Playwright | - | End-to-end testing |
+| Technology  | Version | Purpose                 |
+| ----------- | ------- | ----------------------- |
+| Vite        | 7.3.0   | Build tool & dev server |
+| tsx         | 4.20.5  | TypeScript execution    |
+| Drizzle Kit | 0.31.8  | Database migrations     |
+| Vitest      | 4.x     | Unit testing            |
+| Playwright  | -       | End-to-end testing      |
 
 ## 🚀 Getting Started
 
@@ -65,19 +67,22 @@ A modern, full-stack resume builder application that allows users to create, edi
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd resume-builder
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Configure environment variables**
-   
+
    Create a `.env` file in the root directory:
+
    ```env
    DATABASE_URL=postgresql://username:password@localhost:5432/resume_builder
    # Generate with: openssl rand -base64 32
@@ -86,17 +91,19 @@ A modern, full-stack resume builder application that allows users to create, edi
    ```
 
 4. **Set up the database**
+
    ```bash
    npm run db:push
    ```
 
 5. **Start the development server**
+
    ```bash
    npm run dev
    ```
 
 6. **Open the application**
-   
+
    Navigate to `http://localhost:5000` in your browser.
 
 ## 📖 Usage
@@ -109,6 +116,7 @@ A modern, full-stack resume builder application that allows users to create, edi
 ### Editing
 
 Use the tabbed editor to update:
+
 - **Personal** - Name, title, summary, contact information
 - **Experience** - Work history with company, role, dates, and highlights
 - **Education** - Academic background with institution, degree, and GPA
@@ -118,6 +126,7 @@ Use the tabbed editor to update:
 ### Choosing a Template
 
 Navigate to the **Template** tab to select from:
+
 - **Modern** - Clean design with blue accents
 - **Classic** - Traditional serif layout
 - **Minimal** - Ultra-clean with generous whitespace
@@ -125,7 +134,10 @@ Navigate to the **Template** tab to select from:
 
 ### Exporting
 
-Click **Export PDF** to download your resume as a print-ready PDF document.
+Click **Export PDF** to download a compact, print-ready PDF generated from the
+current editor content. Exported text remains selectable, and long resumes are
+paginated between entries to prevent clipped headings and split job records when
+space allows.
 
 ## 📁 Project Structure
 
@@ -171,25 +183,29 @@ resume-builder/
 
 ### Resumes
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/resumes` | List all resumes |
-| `GET` | `/api/resumes/:id` | Get single resume |
-| `POST` | `/api/resumes` | Create new resume |
-| `PUT` | `/api/resumes/:id` | Update resume |
-| `DELETE` | `/api/resumes/:id` | Delete resume |
+| Method   | Endpoint               | Description                          |
+| -------- | ---------------------- | ------------------------------------ |
+| `GET`    | `/api/resumes`         | List all resumes                     |
+| `GET`    | `/api/resumes/:id/pdf` | Export a saved resume as PDF         |
+| `GET`    | `/api/resumes/:id`     | Get single resume                    |
+| `POST`   | `/api/resumes`         | Create new resume                    |
+| `POST`   | `/api/resumes/pdf`     | Export current editor content as PDF |
+| `PUT`    | `/api/resumes/:id`     | Update resume                        |
+| `DELETE` | `/api/resumes/:id`     | Delete resume                        |
 
 ### File Upload
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+| Method | Endpoint      | Description                            |
+| ------ | ------------- | -------------------------------------- |
 | `POST` | `/api/upload` | Upload resume file for text extraction |
 
 #### Request
+
 - **Content-Type**: `multipart/form-data`
-- **Field**: `file` (PDF, DOC, or DOCX, max 10MB)
+- **Field**: `file` (PDF or DOCX, max 10MB)
 
 #### Response
+
 ```json
 {
   "filename": "resume.pdf",
@@ -276,12 +292,12 @@ npm run test:ui
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `SESSION_SECRET` | Yes | Random secret of at least 32 characters for signing sessions |
-| `PORT` | No | Server port (default: 5000) |
-| `NODE_ENV` | No | `development` or `production` |
+| Variable         | Required | Description                                                  |
+| ---------------- | -------- | ------------------------------------------------------------ |
+| `DATABASE_URL`   | Yes      | PostgreSQL connection string                                 |
+| `SESSION_SECRET` | Yes      | Random secret of at least 32 characters for signing sessions |
+| `PORT`           | No       | Server port (default: 5000)                                  |
+| `NODE_ENV`       | No       | `development` or `production`                                |
 
 ### Build & Run
 
@@ -294,6 +310,7 @@ npm run start
 ```
 
 The build process:
+
 1. Compiles TypeScript server code to `dist/index.cjs`
 2. Bundles React client to `dist/public/`
 3. Production server serves static files from `dist/public/`

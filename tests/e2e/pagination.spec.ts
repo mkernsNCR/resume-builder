@@ -1,4 +1,22 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function hasVisiblePageIndicator(
+  page: Page,
+  timeout = 2000,
+): Promise<boolean> {
+  try {
+    await page.getByText(/Page \d+ of \d+/).waitFor({
+      state: "visible",
+      timeout,
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return false;
+    }
+    throw error;
+  }
+}
 
 test.describe("Pagination", () => {
   test.beforeEach(async ({ page }) => {
@@ -11,14 +29,15 @@ test.describe("Pagination", () => {
     await page.locator(".paginated-resume").waitFor({ state: "visible" });
   });
 
-  test("should display pagination controls when resume has multiple pages", async ({ page }) => {
+  test("should display pagination controls when resume has multiple pages", async ({
+    page,
+  }) => {
     // The paginated resume component shows controls when totalPages > 1
     const paginationContainer = page.locator(".paginated-resume");
     await expect(paginationContainer).toBeVisible();
 
     // Check if page indicator exists (may or may not show depending on content length)
-    const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible().catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Verify navigation buttons are present
@@ -29,9 +48,11 @@ test.describe("Pagination", () => {
     }
   });
 
-  test("should navigate between pages using pagination buttons", async ({ page }) => {
+  test("should navigate between pages using pagination buttons", async ({
+    page,
+  }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible({ timeout: 2000 }).catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Get initial page state
@@ -39,7 +60,9 @@ test.describe("Pagination", () => {
       expect(initialText).toContain("Page 1");
 
       // Find and click next button
-      const nextButton = page.locator(".paginated-resume button[type='button']").last();
+      const nextButton = page
+        .locator(".paginated-resume button[type='button']")
+        .last();
       await expect(nextButton).toBeEnabled();
       await nextButton.click();
 
@@ -47,7 +70,9 @@ test.describe("Pagination", () => {
       await expect(pageIndicator).toContainText("Page 2");
 
       // Click previous button
-      const prevButton = page.locator(".paginated-resume button[type='button']").first();
+      const prevButton = page
+        .locator(".paginated-resume button[type='button']")
+        .first();
       await prevButton.click();
 
       // Verify we're back to page 1
@@ -56,31 +81,36 @@ test.describe("Pagination", () => {
   });
 
   test("should disable prev button on first page", async ({ page }) => {
-    const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible({ timeout: 2000 }).catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // On first page, prev button should be disabled
-      const prevButton = page.locator(".paginated-resume button[type='button']").first();
+      const prevButton = page
+        .locator(".paginated-resume button[type='button']")
+        .first();
       await expect(prevButton).toBeDisabled();
     }
   });
 
   test("should disable next button on last page", async ({ page }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible({ timeout: 2000 }).catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Navigate to last page
-      const nextButton = page.locator(".paginated-resume button[type='button']").last();
-      
+      const nextButton = page
+        .locator(".paginated-resume button[type='button']")
+        .last();
+
       // Click next until we reach the last page
       let attempts = 0;
-      while (await nextButton.isEnabled() && attempts < 10) {
+      while ((await nextButton.isEnabled()) && attempts < 10) {
         const currentText = await pageIndicator.textContent();
         await nextButton.click();
         // Wait for page indicator to change
-        await expect(pageIndicator).not.toHaveText(currentText || "", { timeout: 2000 });
+        await expect(pageIndicator).not.toHaveText(currentText || "", {
+          timeout: 2000,
+        });
         attempts++;
       }
 
@@ -89,9 +119,10 @@ test.describe("Pagination", () => {
     }
   });
 
-  test("should have type='button' on pagination buttons to prevent form submission", async ({ page }) => {
-    const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible({ timeout: 2000 }).catch(() => false);
+  test("should have type='button' on pagination buttons to prevent form submission", async ({
+    page,
+  }) => {
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       const buttons = page.locator(".paginated-resume button");
@@ -104,7 +135,9 @@ test.describe("Pagination", () => {
     }
   });
 
-  test("should render resume preview container with correct dimensions", async ({ page }) => {
+  test("should render resume preview container with correct dimensions", async ({
+    page,
+  }) => {
     // Set a large viewport to ensure preview isn't scaled
     await page.setViewportSize({ width: 1920, height: 1080 });
 
@@ -131,13 +164,17 @@ test.describe("Pagination", () => {
     }
   });
 
-  test("should clamp currentPage when content changes reduce total pages", async ({ page }) => {
+  test("should clamp currentPage when content changes reduce total pages", async ({
+    page,
+  }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible({ timeout: 2000 }).catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Navigate to page 2
-      const nextButton = page.locator(".paginated-resume button[type='button']").last();
+      const nextButton = page
+        .locator(".paginated-resume button[type='button']")
+        .last();
       await nextButton.click();
       await expect(pageIndicator).toContainText("Page 2");
 
@@ -148,29 +185,31 @@ test.describe("Pagination", () => {
       // Find and click delete buttons to remove experience entries
       const deleteButtons = page.locator("button[aria-label*='Delete']");
       const initialDeleteCount = await deleteButtons.count();
-      
+
       // Delete up to 3 entries to reduce content
       const entriesToDelete = Math.min(3, initialDeleteCount);
       for (let i = 0; i < entriesToDelete; i++) {
         const currentCount = await deleteButtons.count();
-        if (currentCount > 0 && await deleteButtons.first().isVisible()) {
+        if (currentCount > 0 && (await deleteButtons.first().isVisible())) {
           await deleteButtons.first().click();
           // Wait for the delete button count to decrease
           const expectedCount = currentCount - 1;
-          await expect(deleteButtons).toHaveCount(expectedCount, { timeout: 2000 });
+          await expect(deleteButtons).toHaveCount(expectedCount, {
+            timeout: 2000,
+          });
         }
       }
 
       // Switch to preview tab to check pagination state
       await page.getByTestId("main-tab-preview").click();
-      
+
       // Wait for preview to render
       await page.locator(".paginated-resume").waitFor({ state: "visible" });
-      
+
       // The page indicator should show a valid page (either page 1, or not show "Page 2" if we're back to 1 page)
       const newPageIndicator = page.getByText(/Page \d+ of \d+/);
-      const stillHasMultiplePages = await newPageIndicator.isVisible({ timeout: 1000 }).catch(() => false);
-      
+      const stillHasMultiplePages = await hasVisiblePageIndicator(page, 1000);
+
       if (stillHasMultiplePages) {
         // If still multiple pages, current page should be valid (not exceeding total)
         const text = await newPageIndicator.textContent();
@@ -187,7 +226,9 @@ test.describe("Pagination", () => {
 });
 
 test.describe("Multi-page PDF Export", () => {
-  test("should export multi-page resume as PDF with all pages", async ({ page }) => {
+  test("should export multi-page resume as PDF with all pages", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     // Wait for resume cards to appear and select one
@@ -219,16 +260,21 @@ test.describe("Multi-page PDF Export", () => {
     // Wait for preview to be ready
     await page.locator(".paginated-resume").waitFor({ state: "visible" });
 
-    // Set up to intercept and delay any canvas/image operations to make loading state observable
+    await page.route("**/api/resumes/pdf", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await route.continue();
+    });
+
+    // Keep the request in flight long enough to make the loading state observable.
     const exportButton = page.getByTestId("button-export");
-    
+
     // Click export and immediately check for loading state
     await exportButton.click();
 
     // During export, button should be disabled (loading state)
     // The button becomes disabled while isExporting is true
     await expect(exportButton).toBeDisabled({ timeout: 1000 });
-    
+
     // Also check for the Loader2 spinner icon within the button
     const spinner = exportButton.locator("svg.animate-spin");
     await expect(spinner).toBeVisible({ timeout: 1000 });

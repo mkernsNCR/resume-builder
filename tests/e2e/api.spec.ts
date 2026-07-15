@@ -13,11 +13,11 @@ test.describe("API Endpoints", () => {
         content: { fullName: "API Test User" },
       },
     });
-    
+
     // Fail fast if fixture creation failed
     expect(response.ok(), "Failed to create test fixture resume").toBeTruthy();
     expect(response.status()).toBe(201);
-    
+
     const created = await response.json();
     expect(created.id, "Test fixture resume missing id").toBeDefined();
     testResumeId = created.id;
@@ -30,12 +30,14 @@ test.describe("API Endpoints", () => {
     }
   });
 
-  test("GET /api/resumes should return array of resumes", async ({ request }) => {
+  test("GET /api/resumes should return array of resumes", async ({
+    request,
+  }) => {
     const response = await request.get("/api/resumes");
-    
+
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
-    
+
     const resumes = await response.json();
     expect(Array.isArray(resumes)).toBeTruthy();
     // Verify our test fixture exists
@@ -43,22 +45,26 @@ test.describe("API Endpoints", () => {
     expect(testResume).toBeDefined();
   });
 
-  test("GET /api/resumes/:id should return single resume", async ({ request }) => {
+  test("GET /api/resumes/:id should return single resume", async ({
+    request,
+  }) => {
     // Use the test fixture resume created in beforeAll
     const response = await request.get(`/api/resumes/${testResumeId}`);
-    
+
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
-    
+
     const resume = await response.json();
     expect(resume.id).toBe(testResumeId);
     expect(resume.title).toBe("API Test Fixture Resume");
     expect(resume.content).toBeDefined();
   });
 
-  test("GET /api/resumes/:id should return 404 for non-existent resume", async ({ request }) => {
+  test("GET /api/resumes/:id should return 404 for non-existent resume", async ({
+    request,
+  }) => {
     const response = await request.get("/api/resumes/non-existent-id-12345");
-    
+
     expect(response.status()).toBe(404);
   });
 
@@ -225,6 +231,51 @@ test.describe("API Endpoints", () => {
     );
   });
 
+  test("POST /api/resumes/pdf should export current editor content", async ({
+    request,
+  }) => {
+    const response = await request.post("/api/resumes/pdf", {
+      data: {
+        title: "Current Editor Resume",
+        template: "classic",
+        content: {
+          fullName: "Current Editor User",
+          title: "Front-End Engineer",
+          summary: "Content that has not been persisted yet.",
+          experience: [
+            {
+              id: "current-experience",
+              company: "Example Company",
+              position: "Engineer",
+              startDate: "2024",
+              current: true,
+            },
+          ],
+        },
+      },
+    });
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("application/pdf");
+    expect(response.headers()["content-disposition"]).toContain(
+      'attachment; filename="Current_Editor_Resume.pdf"',
+    );
+    const pdf = await response.body();
+    expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
+    expect(pdf.length).toBeLessThan(100_000);
+  });
+
+  test("POST /api/resumes/pdf should validate editor content", async ({
+    request,
+  }) => {
+    const response = await request.post("/api/resumes/pdf", {
+      data: { template: "unknown", content: {} },
+    });
+
+    expect(response.status()).toBe(400);
+    expect((await response.json()).code).toBe("VALIDATION_ERROR");
+  });
+
   test("GET /api/resumes/:id/pdf should return 404 for a missing resume", async ({
     request,
   }) => {
@@ -260,10 +311,10 @@ test.describe("API Endpoints", () => {
       const response = await request.post("/api/resumes", {
         data: newResume,
       });
-      
+
       expect(response.ok()).toBeTruthy();
       expect(response.status()).toBe(201);
-      
+
       created = await response.json();
       expect(created.id).toBeDefined();
       expect(created.title).toBe("E2E Test Resume");
@@ -399,10 +450,10 @@ test.describe("API Endpoints", () => {
           title: "Updated Title via E2E",
         },
       });
-      
+
       expect(response.ok()).toBeTruthy();
       expect(response.status()).toBe(200);
-      
+
       const updated = await response.json();
       expect(updated.title).toBe("Updated Title via E2E");
     } finally {
@@ -426,7 +477,7 @@ test.describe("API Endpoints", () => {
 
     // Delete the resume
     const response = await request.delete(`/api/resumes/${created.id}`);
-    
+
     expect(response.status()).toBe(204);
 
     // Verify it's deleted
@@ -434,14 +485,16 @@ test.describe("API Endpoints", () => {
     expect(getResponse.status()).toBe(404);
   });
 
-  test("POST /api/resumes should return 400 for invalid data", async ({ request }) => {
+  test("POST /api/resumes should return 400 for invalid data", async ({
+    request,
+  }) => {
     const response = await request.post("/api/resumes", {
       data: {
         // Missing required fields
         invalid: "data",
       },
     });
-    
+
     expect(response.status()).toBe(400);
   });
 });

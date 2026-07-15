@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { PDFParse } from "pdf-parse";
 import { generateResumePDF } from "../../../server/pdf-generator";
-import type { ResumeContent } from "../../../shared/schema";
+import type { ResumeContent, ResumeTemplate } from "../../../shared/schema";
 
 const content: ResumeContent = {
   fullName: "John Doe",
@@ -47,8 +47,11 @@ const content: ResumeContent = {
   ],
 };
 
-async function renderPdf(resumeContent: ResumeContent): Promise<Buffer> {
-  const doc = generateResumePDF(resumeContent);
+async function renderPdf(
+  resumeContent: ResumeContent,
+  template: ResumeTemplate = "modern",
+): Promise<Buffer> {
+  const doc = generateResumePDF(resumeContent, template);
   const chunks: Buffer[] = [];
 
   return new Promise<Buffer>((resolve, reject) => {
@@ -69,12 +72,33 @@ async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
   }
 }
 
+async function extractPdfPages(pdfBuffer: Buffer): Promise<string[]> {
+  const parser = new PDFParse({ data: pdfBuffer });
+  try {
+    const result = await parser.getText();
+    return result.pages.map((page) => page.text);
+  } finally {
+    await parser.destroy();
+  }
+}
+
 describe("generateResumePDF", () => {
   it("produces a PDF document with content", async () => {
     const pdfBuffer = await renderPdf(content);
     expect(pdfBuffer.length).toBeGreaterThan(0);
+    expect(pdfBuffer.length).toBeLessThan(100_000);
     expect(pdfBuffer.toString("latin1").startsWith("%PDF")).toBe(true);
   });
+
+  it.each<ResumeTemplate>(["modern", "classic", "minimal", "creative"])(
+    "renders selectable text with the %s theme",
+    async (template) => {
+      const pdfText = await extractPdfText(await renderPdf(content, template));
+      expect(pdfText).toContain("John Doe");
+      expect(pdfText.toLowerCase()).toContain("professional experience");
+      expect(pdfText).toContain("Tech Corp");
+    },
+  );
 
   it("produces a valid PDF with empty content", async () => {
     const emptyContent: ResumeContent = {
@@ -121,16 +145,86 @@ describe("generateResumePDF", () => {
       ],
     };
 
-    const pdfBuffer = await renderPdf(longContent);
-    const pageCount =
-      pdfBuffer.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
-    expect(pageCount).toBeGreaterThan(1);
+    const pages = await extractPdfPages(await renderPdf(longContent));
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.every((page) => page.trim().length > 0)).toBe(true);
+  });
+
+  it("keeps layout state aligned after a paragraph spans pages", async () => {
+    const longSummary = Array.from(
+      { length: 900 },
+      (_, index) => `Summary detail ${index + 1}`,
+    ).join(" ");
+    const pages = await extractPdfPages(
+      await renderPdf({
+        ...content,
+        summary: longSummary,
+        experience: [],
+        education: [],
+        skills: [],
+        projects: [],
+      }),
+    );
+
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.every((page) => page.trim().length > 100)).toBe(true);
   });
 
   it("separates open-ended dates from Present", async () => {
-    const pdfText = await extractPdfText(await renderPdf(content));
+    const pdfText = await extractPdfText(
+      await renderPdf({
+        ...content,
+        experience: [{ ...content.experience![0], current: true }],
+      }),
+    );
 
-    expect(pdfText).toContain("2020 — Present");
-    expect(pdfText).toContain("2014 — Present");
+    expect(pdfText).toContain("2020 - Present");
+    expect(pdfText).toContain("2014");
+    expect(pdfText).not.toContain("2014 - Present");
+  });
+
+  it("does not imply an ongoing role when current is false", async () => {
+    const pdfText = await extractPdfText(
+      await renderPdf({
+        ...content,
+        education: [],
+        experience: [
+          {
+            ...content.experience![0],
+            current: false,
+            endDate: undefined,
+          },
+        ],
+      }),
+    );
+
+    expect(pdfText).toContain("2020");
+    expect(pdfText).not.toContain("2020 - Present");
+  });
+
+  it("packs entry-sized content without creating a sparse first page", async () => {
+    const denseContent: ResumeContent = {
+      ...content,
+      experience: Array.from({ length: 7 }, (_, index) => ({
+        id: `experience-${index}`,
+        company: `Company ${index + 1}`,
+        position: "Front-End Engineer",
+        startDate: `${2018 + index}`,
+        endDate: `${2019 + index}`,
+        highlights: [
+          "Built accessible React interfaces for complex public workflows.",
+          "Improved automated test coverage and release confidence.",
+          "Partnered with design and product teams to ship measurable results.",
+        ],
+      })),
+    };
+
+    const pages = await extractPdfPages(
+      await renderPdf(denseContent, "classic"),
+    );
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages[0]).toContain("PROFESSIONAL EXPERIENCE");
+    expect(pages[0]).toContain("Company 1");
+    expect(pages.every((page) => page.trim().length > 100)).toBe(true);
   });
 });
