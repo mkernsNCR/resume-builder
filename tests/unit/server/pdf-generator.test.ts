@@ -150,11 +150,56 @@ describe("generateResumePDF", () => {
     expect(pages.every((page) => page.trim().length > 0)).toBe(true);
   });
 
+  it("keeps layout state aligned after a paragraph spans pages", async () => {
+    const longSummary = Array.from(
+      { length: 900 },
+      (_, index) => `Summary detail ${index + 1}`,
+    ).join(" ");
+    const pages = await extractPdfPages(
+      await renderPdf({
+        ...content,
+        summary: longSummary,
+        experience: [],
+        education: [],
+        skills: [],
+        projects: [],
+      }),
+    );
+
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.every((page) => page.trim().length > 100)).toBe(true);
+  });
+
   it("separates open-ended dates from Present", async () => {
-    const pdfText = await extractPdfText(await renderPdf(content));
+    const pdfText = await extractPdfText(
+      await renderPdf({
+        ...content,
+        experience: [{ ...content.experience![0], current: true }],
+      }),
+    );
 
     expect(pdfText).toContain("2020 - Present");
-    expect(pdfText).toContain("2014 - Present");
+    expect(pdfText).toContain("2014");
+    expect(pdfText).not.toContain("2014 - Present");
+  });
+
+  it("does not imply an ongoing role when current is false", async () => {
+    const pdfText = await extractPdfText(
+      await renderPdf({
+        ...content,
+        education: [],
+        experience: [
+          {
+            ...content.experience![0],
+            current: false,
+            endDate: undefined,
+          },
+        ],
+      }),
+    );
+
+    expect(pdfText).toContain("2020");
+    expect(pdfText).not.toContain("2020 - Present");
   });
 
   it("packs entry-sized content without creating a sparse first page", async () => {

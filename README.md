@@ -136,7 +136,8 @@ Navigate to the **Template** tab to select from:
 
 Click **Export PDF** to download a compact, print-ready PDF generated from the
 current editor content. Exported text remains selectable, and long resumes are
-paginated between entries to prevent clipped headings and split job records.
+paginated between entries to prevent clipped headings and split job records when
+space allows.
 
 ## 📁 Project Structure
 
@@ -182,14 +183,15 @@ resume-builder/
 
 ### Resumes
 
-| Method   | Endpoint           | Description       |
-| -------- | ------------------ | ----------------- |
-| `GET`    | `/api/resumes`     | List all resumes  |
-| `GET`    | `/api/resumes/:id` | Get single resume |
-| `POST`   | `/api/resumes`     | Create new resume |
-| `POST`   | `/api/resumes/pdf` | Export current editor content as PDF |
-| `PUT`    | `/api/resumes/:id` | Update resume     |
-| `DELETE` | `/api/resumes/:id` | Delete resume     |
+| Method   | Endpoint               | Description                          |
+| -------- | ---------------------- | ------------------------------------ |
+| `GET`    | `/api/resumes`         | List all resumes                     |
+| `GET`    | `/api/resumes/:id/pdf` | Export a saved resume as PDF         |
+| `GET`    | `/api/resumes/:id`     | Get single resume                    |
+| `POST`   | `/api/resumes`         | Create new resume                    |
+| `POST`   | `/api/resumes/pdf`     | Export current editor content as PDF |
+| `PUT`    | `/api/resumes/:id`     | Update resume                        |
+| `DELETE` | `/api/resumes/:id`     | Delete resume                        |
 
 ### File Upload
 
@@ -200,7 +202,7 @@ resume-builder/
 #### Request
 
 - **Content-Type**: `multipart/form-data`
-- **Field**: `file` (PDF, DOC, or DOCX, max 10MB)
+- **Field**: `file` (PDF or DOCX, max 10MB)
 
 #### Response
 

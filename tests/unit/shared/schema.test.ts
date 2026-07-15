@@ -6,9 +6,17 @@ import {
   workExperienceSchema,
   educationSchema,
   skillSchema,
+  pdfFilename,
 } from "../../../shared/schema";
 
 describe("schema validation", () => {
+  describe("pdfFilename", () => {
+    it("sanitizes resume names consistently", () => {
+      expect(pdfFilename(" Jane / Doe.pdf ")).toBe("Jane_Doe.pdf");
+      expect(pdfFilename("!!!")).toBe("resume.pdf");
+    });
+  });
+
   describe("contactInfoSchema", () => {
     it("accepts a valid contact info object", () => {
       const result = contactInfoSchema.safeParse({

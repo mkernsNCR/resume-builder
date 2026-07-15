@@ -29,12 +29,11 @@ export function FileUpload({ onFileSelect, isLoading }: FileUploadProps) {
     const validTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/msword",
     ];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a PDF or Word document (.pdf, .docx, .doc)");
+      alert("Please upload a PDF or DOCX document (.pdf, .docx)");
       return false;
     }
 
@@ -99,7 +98,7 @@ export function FileUpload({ onFileSelect, isLoading }: FileUploadProps) {
           type="file"
           id="file-upload"
           className="hidden"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf,.docx"
           onChange={handleChange}
           data-testid="input-file-upload"
         />

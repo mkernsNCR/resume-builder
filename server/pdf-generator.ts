@@ -377,12 +377,13 @@ function renderDatedHeading(
   heading: string,
   date: string,
 ): void {
+  const headingWidth = date ? ENTRY_WIDTH : CONTENT_WIDTH;
   const headingHeight = measureText(
     state.doc,
     heading,
     state.theme.boldFont,
     10.5,
-    ENTRY_WIDTH,
+    headingWidth,
     0,
   );
   const dateHeight = date
@@ -395,7 +396,7 @@ function renderDatedHeading(
     .font(state.theme.boldFont)
     .fontSize(10.5)
     .fillColor(state.theme.text)
-    .text(heading, MARGIN, state.y, { width: ENTRY_WIDTH, lineGap: 0 });
+    .text(heading, MARGIN, state.y, { width: headingWidth, lineGap: 0 });
   if (date) {
     state.doc
       .font(state.theme.italicFont)
@@ -452,7 +453,7 @@ function renderParagraph(
       lineGap: 2,
       align: "left",
     });
-  state.y += height;
+  syncRenderState(state);
 }
 
 function renderHighlights(state: RenderState, highlights: string[]): void {
@@ -483,7 +484,8 @@ function renderHighlights(state: RenderState, highlights: string[]): void {
           width: textWidth,
           lineGap: 1.5,
         });
-      state.y += height + 2;
+      syncRenderState(state);
+      state.y += 2;
     });
 }
 
@@ -704,12 +706,13 @@ function measureDatedHeading(
   heading: string,
   date: string,
 ): number {
+  const headingWidth = date ? ENTRY_WIDTH : CONTENT_WIDTH;
   const headingHeight = measureText(
     state.doc,
     heading,
     state.theme.boldFont,
     10.5,
-    ENTRY_WIDTH,
+    headingWidth,
     0,
   );
   const dateHeight = date
@@ -770,6 +773,12 @@ function ensureSpace(state: RenderState, neededHeight: number): void {
   }
 }
 
+function syncRenderState(state: RenderState): void {
+  const range = state.doc.bufferedPageRange();
+  state.pageIndex = range.start + range.count - 1;
+  state.y = state.doc.y;
+}
+
 function addPage(state: RenderState): void {
   state.doc.addPage();
   state.y = MARGIN;
@@ -784,7 +793,7 @@ function formatDateRange(
   const start = startDate?.trim();
   const end = current ? "Present" : endDate?.trim();
   if (start && end) return `${start} - ${end}`;
-  if (start) return `${start} - Present`;
+  if (start) return current ? `${start} - Present` : start;
   return end || "";
 }
 

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { storage, seedDatabase } from "./storage";
 import {
   insertResumeSchema,
+  pdfFilename,
   RESUME_TEMPLATES,
   resumeContentSchema,
 } from "@shared/schema";
@@ -21,22 +22,10 @@ import { generateResumePDF } from "./pdf-generator";
 
 const require = createRequire(import.meta.url);
 
-// OLE2 signature for legacy .doc files (D0 CF 11 E0)
-const OLE2_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0]);
-
 async function validateFileType(
   filePath: string,
   claimedMimeType: string,
 ): Promise<boolean> {
-  // For legacy .doc files, check OLE2 signature manually (file-type doesn't support .doc)
-  if (claimedMimeType === "application/msword") {
-    const fd = fs.openSync(filePath, "r");
-    const header = Buffer.alloc(4);
-    fs.readSync(fd, header, 0, 4, 0);
-    fs.closeSync(fd);
-    return header.equals(OLE2_SIGNATURE);
-  }
-
   const type = await fileTypeFromFile(filePath);
   if (!type) return false;
 
@@ -83,7 +72,6 @@ const upload = multer({
     const allowedTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/msword",
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -117,15 +105,6 @@ const pdfExportSchema = z.object({
   template: z.enum(RESUME_TEMPLATES).default("modern"),
   title: z.string().trim().max(200).optional(),
 });
-
-function pdfFilename(value: string): string {
-  const stem = value
-    .replace(/\.pdf$/i, "")
-    .replace(/[^a-zA-Z0-9_-]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
-  return `${stem || "resume"}.pdf`;
-}
 
 // Text extraction functions
 async function extractTextFromPDF(filePath: string): Promise<string> {
@@ -426,7 +405,7 @@ export async function registerRoutes(
         const isValid = await validateFileType(filePath, mimeType);
         if (!isValid) {
           throw ApiError.badRequest(
-            "File content does not match its type. Only PDF and Word documents are allowed.",
+            "File content does not match its type. Only PDF and DOCX documents are allowed.",
             "INVALID_FILE_TYPE",
           );
         }
@@ -437,8 +416,7 @@ export async function registerRoutes(
           extractedText = await extractTextFromPDF(filePath);
         } else if (
           mimeType ===
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-          mimeType === "application/msword"
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ) {
           extractedText = await extractTextFromDOCX(filePath);
         }

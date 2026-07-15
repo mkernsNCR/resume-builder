@@ -29,7 +29,12 @@ import type {
 } from "@/components/resume-editor/types";
 import { TemplateSelector } from "@/components/template-selector";
 import { ResumePreview } from "@/components/resume-templates";
-import type { Resume, ResumeContent, ResumeTemplate } from "@shared/schema";
+import {
+  pdfFilename,
+  type Resume,
+  type ResumeContent,
+  type ResumeTemplate,
+} from "@shared/schema";
 import {
   FileText,
   Download,
@@ -81,16 +86,6 @@ function getAutosaveFingerprint(
   template: ResumeTemplate,
 ): string {
   return JSON.stringify([template, content]);
-}
-
-function getPdfFilename(fullName: string): string {
-  const stem = fullName
-    .trim()
-    .replace(/\.pdf$/i, "")
-    .replace(/[^a-zA-Z0-9_-]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
-  return `${stem || "resume"}.pdf`;
 }
 
 export default function Home() {
@@ -583,7 +578,7 @@ export default function Home() {
       const objectUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement("a");
       downloadLink.href = objectUrl;
-      downloadLink.download = getPdfFilename(content.fullName);
+      downloadLink.download = pdfFilename(content.fullName);
       downloadLink.style.display = "none";
       document.body.appendChild(downloadLink);
       downloadLink.click();

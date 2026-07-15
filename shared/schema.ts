@@ -74,6 +74,16 @@ export const resumeContentSchema = z.object({
 });
 export type ResumeContent = z.infer<typeof resumeContentSchema>;
 
+export function pdfFilename(value: string): string {
+  const stem = value
+    .trim()
+    .replace(/\.pdf$/i, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  return `${stem || "resume"}.pdf`;
+}
+
 // Database table for resumes
 export const resumes = pgTable("resumes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

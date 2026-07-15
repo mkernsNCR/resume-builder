@@ -20,7 +20,10 @@ test.describe("Pagination", () => {
 
     // Check if page indicator exists (may or may not show depending on content length)
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator.isVisible().catch(() => false);
+    const hasMultiplePages = await pageIndicator
+      .waitFor({ state: "visible", timeout: 2000 })
+      .then(() => true)
+      .catch(() => false);
 
     if (hasMultiplePages) {
       // Verify navigation buttons are present
@@ -36,7 +39,8 @@ test.describe("Pagination", () => {
   }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
     const hasMultiplePages = await pageIndicator
-      .isVisible({ timeout: 2000 })
+      .waitFor({ state: "visible", timeout: 2000 })
+      .then(() => true)
       .catch(() => false);
 
     if (hasMultiplePages) {
@@ -68,7 +72,8 @@ test.describe("Pagination", () => {
   test("should disable prev button on first page", async ({ page }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
     const hasMultiplePages = await pageIndicator
-      .isVisible({ timeout: 2000 })
+      .waitFor({ state: "visible", timeout: 2000 })
+      .then(() => true)
       .catch(() => false);
 
     if (hasMultiplePages) {
@@ -83,7 +88,8 @@ test.describe("Pagination", () => {
   test("should disable next button on last page", async ({ page }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
     const hasMultiplePages = await pageIndicator
-      .isVisible({ timeout: 2000 })
+      .waitFor({ state: "visible", timeout: 2000 })
+      .then(() => true)
       .catch(() => false);
 
     if (hasMultiplePages) {
@@ -114,7 +120,8 @@ test.describe("Pagination", () => {
   }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
     const hasMultiplePages = await pageIndicator
-      .isVisible({ timeout: 2000 })
+      .waitFor({ state: "visible", timeout: 2000 })
+      .then(() => true)
       .catch(() => false);
 
     if (hasMultiplePages) {
@@ -162,7 +169,8 @@ test.describe("Pagination", () => {
   }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
     const hasMultiplePages = await pageIndicator
-      .isVisible({ timeout: 2000 })
+      .waitFor({ state: "visible", timeout: 2000 })
+      .then(() => true)
       .catch(() => false);
 
     if (hasMultiplePages) {
@@ -204,7 +212,8 @@ test.describe("Pagination", () => {
       // The page indicator should show a valid page (either page 1, or not show "Page 2" if we're back to 1 page)
       const newPageIndicator = page.getByText(/Page \d+ of \d+/);
       const stillHasMultiplePages = await newPageIndicator
-        .isVisible({ timeout: 1000 })
+        .waitFor({ state: "visible", timeout: 1000 })
+        .then(() => true)
         .catch(() => false);
 
       if (stillHasMultiplePages) {
