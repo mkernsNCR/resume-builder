@@ -1,4 +1,22 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function hasVisiblePageIndicator(
+  page: Page,
+  timeout = 2000,
+): Promise<boolean> {
+  try {
+    await page.getByText(/Page \d+ of \d+/).waitFor({
+      state: "visible",
+      timeout,
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return false;
+    }
+    throw error;
+  }
+}
 
 test.describe("Pagination", () => {
   test.beforeEach(async ({ page }) => {
@@ -19,11 +37,7 @@ test.describe("Pagination", () => {
     await expect(paginationContainer).toBeVisible();
 
     // Check if page indicator exists (may or may not show depending on content length)
-    const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator
-      .waitFor({ state: "visible", timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Verify navigation buttons are present
@@ -38,10 +52,7 @@ test.describe("Pagination", () => {
     page,
   }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator
-      .waitFor({ state: "visible", timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Get initial page state
@@ -70,11 +81,7 @@ test.describe("Pagination", () => {
   });
 
   test("should disable prev button on first page", async ({ page }) => {
-    const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator
-      .waitFor({ state: "visible", timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // On first page, prev button should be disabled
@@ -87,10 +94,7 @@ test.describe("Pagination", () => {
 
   test("should disable next button on last page", async ({ page }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator
-      .waitFor({ state: "visible", timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Navigate to last page
@@ -118,11 +122,7 @@ test.describe("Pagination", () => {
   test("should have type='button' on pagination buttons to prevent form submission", async ({
     page,
   }) => {
-    const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator
-      .waitFor({ state: "visible", timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       const buttons = page.locator(".paginated-resume button");
@@ -168,10 +168,7 @@ test.describe("Pagination", () => {
     page,
   }) => {
     const pageIndicator = page.getByText(/Page \d+ of \d+/);
-    const hasMultiplePages = await pageIndicator
-      .waitFor({ state: "visible", timeout: 2000 })
-      .then(() => true)
-      .catch(() => false);
+    const hasMultiplePages = await hasVisiblePageIndicator(page);
 
     if (hasMultiplePages) {
       // Navigate to page 2
@@ -211,10 +208,7 @@ test.describe("Pagination", () => {
 
       // The page indicator should show a valid page (either page 1, or not show "Page 2" if we're back to 1 page)
       const newPageIndicator = page.getByText(/Page \d+ of \d+/);
-      const stillHasMultiplePages = await newPageIndicator
-        .waitFor({ state: "visible", timeout: 1000 })
-        .then(() => true)
-        .catch(() => false);
+      const stillHasMultiplePages = await hasVisiblePageIndicator(page, 1000);
 
       if (stillHasMultiplePages) {
         // If still multiple pages, current page should be valid (not exceeding total)

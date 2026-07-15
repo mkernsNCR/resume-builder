@@ -143,7 +143,7 @@ export function FileUpload({ onFileSelect, isLoading }: FileUploadProps) {
               Drop your resume here or click to browse
             </p>
             <p className="text-sm text-muted-foreground">
-              Supports PDF and Word documents (max 10MB)
+              Supports PDF and DOCX documents (max 10MB)
             </p>
           </label>
         )}
