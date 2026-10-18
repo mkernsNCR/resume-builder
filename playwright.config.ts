@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { testDatabaseUrl } from "./tests/e2e/test-database";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -27,7 +28,7 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       PORT: process.env.PORT || "3000",
-      DATABASE_URL: process.env.DATABASE_URL || "postgresql://localhost:5432/resume_builder",
+      DATABASE_URL: testDatabaseUrl,
     },
   },
 });

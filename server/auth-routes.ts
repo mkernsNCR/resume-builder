@@ -3,7 +3,11 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { storage } from "./storage";
 import { ApiError } from "./api-error";
-import { hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
+import {
+  hashPassword,
+  verifyPassword,
+  type AuthenticatedRequest,
+} from "./auth";
 import { env } from "./env";
 
 const BCRYPT_MAX_PASSWORD_BYTES = 72;
@@ -88,90 +92,119 @@ async function establishAuthenticatedSession(
 }
 
 export function registerAuthRoutes(app: Express) {
-  app.post("/api/auth/register", registerLimiter, async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const result = registerSchema.safeParse(req.body);
-      if (!result.success) {
-        throw ApiError.badRequest("Invalid registration data", "VALIDATION_ERROR");
-      }
-
-      const { username, password } = result.data;
-
-      const existing = await storage.getUserByUsername(username);
-      if (existing) {
-        throw ApiError.badRequest("Username already taken", "USERNAME_TAKEN");
-      }
-
-      const passwordHash = await hashPassword(password);
-      let user;
+  app.post(
+    "/api/auth/register",
+    registerLimiter,
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
-        user = await storage.createUser({ username, passwordHash });
-      } catch (error) {
-        if (isUsernameUniqueViolation(error)) {
+        const result = registerSchema.safeParse(req.body);
+        if (!result.success) {
+          throw ApiError.badRequest(
+            "Invalid registration data",
+            "VALIDATION_ERROR",
+          );
+        }
+
+        const { username, password } = result.data;
+
+        const existing = await storage.getUserByUsername(username);
+        if (existing) {
           throw ApiError.badRequest("Username already taken", "USERNAME_TAKEN");
         }
-        throw error;
+
+        const passwordHash = await hashPassword(password);
+        let user;
+        try {
+          user = await storage.createUser({ username, passwordHash });
+        } catch (error) {
+          if (isUsernameUniqueViolation(error)) {
+            throw ApiError.badRequest(
+              "Username already taken",
+              "USERNAME_TAKEN",
+            );
+          }
+          throw error;
+        }
+
+        await establishAuthenticatedSession(
+          req as AuthenticatedRequest,
+          user.id,
+        );
+
+        res.status(201).json({ id: user.id, username: user.username });
+      } catch (error) {
+        next(error);
       }
+    },
+  );
 
-      await establishAuthenticatedSession(req as AuthenticatedRequest, user.id);
+  app.post(
+    "/api/auth/login",
+    loginLimiter,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = loginSchema.safeParse(req.body);
+        if (!result.success) {
+          throw ApiError.badRequest("Invalid login data", "VALIDATION_ERROR");
+        }
 
-      res.status(201).json({ id: user.id, username: user.username });
-    } catch (error) {
-      next(error);
-    }
-  });
+        const { username, password } = result.data;
 
-  app.post("/api/auth/login", loginLimiter, async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const result = loginSchema.safeParse(req.body);
-      if (!result.success) {
-        throw ApiError.badRequest("Invalid login data", "VALIDATION_ERROR");
+        const user = await storage.getUserByUsername(username);
+        const valid = await verifyPassword(
+          password,
+          user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+        );
+        if (!user || !valid) {
+          throw ApiError.badRequest(
+            "Invalid username or password",
+            "INVALID_CREDENTIALS",
+          );
+        }
+
+        await establishAuthenticatedSession(
+          req as AuthenticatedRequest,
+          user.id,
+        );
+
+        res.json({ id: user.id, username: user.username });
+      } catch (error) {
+        next(error);
       }
+    },
+  );
 
-      const { username, password } = result.data;
+  app.post(
+    "/api/auth/logout",
+    (req: Request, res: Response, next: NextFunction) => {
+      req.session.destroy((err) => {
+        if (err) {
+          return next(err);
+        }
+        res.clearCookie("connect.sid");
+        res.json({ success: true });
+      });
+    },
+  );
 
-      const user = await storage.getUserByUsername(username);
-      const valid = await verifyPassword(
-        password,
-        user?.passwordHash ?? DUMMY_PASSWORD_HASH,
-      );
-      if (!user || !valid) {
-        throw ApiError.badRequest("Invalid username or password", "INVALID_CREDENTIALS");
+  app.get(
+    "/api/auth/me",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const authReq = req as AuthenticatedRequest;
+        if (!authReq.session?.userId) {
+          return res.json(null);
+        }
+
+        const user = await storage.getUser(authReq.session.userId);
+        if (!user) {
+          return res.json(null);
+        }
+
+        res.json({ id: user.id, username: user.username });
+      } catch (error) {
+        next(error);
       }
-
-      await establishAuthenticatedSession(req as AuthenticatedRequest, user.id);
-
-      res.json({ id: user.id, username: user.username });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Session destroy error:", err);
-      }
-      res.clearCookie("connect.sid");
-      res.json({ success: true });
-    });
-  });
-
-  app.get("/api/auth/me", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const authReq = req as AuthenticatedRequest;
-      if (!authReq.session.userId) {
-        return res.json(null);
-      }
-
-      const user = await storage.getUser(authReq.session.userId);
-      if (!user) {
-        return res.json(null);
-      }
-
-      res.json({ id: user.id, username: user.username });
-    } catch (error) {
-      next(error);
-    }
-  });
+    },
+  );
 }

@@ -119,3 +119,35 @@ describe("envSchema", () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe("deployment bounds", () => {
+  it.each(["-1", "6", "1.5", "true"])(
+    "rejects unsafe proxy hop count %s",
+    (TRUST_PROXY_HOPS) => {
+      expect(
+        envSchema.safeParse({
+          DATABASE_URL: "postgresql://localhost/test",
+          NODE_ENV: "test",
+          TRUST_PROXY_HOPS,
+        }).success,
+      ).toBe(false);
+    },
+  );
+  it("does not trust proxies by default", () => {
+    expect(
+      envSchema.parse({
+        DATABASE_URL: "postgresql://localhost/test",
+        NODE_ENV: "test",
+      }).TRUST_PROXY_HOPS,
+    ).toBe(0);
+  });
+  it("rejects a port outside the TCP range", () => {
+    expect(
+      envSchema.safeParse({
+        DATABASE_URL: "postgresql://localhost/test",
+        NODE_ENV: "test",
+        PORT: 65536,
+      }).success,
+    ).toBe(false);
+  });
+});

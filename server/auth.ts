@@ -42,7 +42,10 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 
@@ -50,18 +53,41 @@ export interface AuthenticatedRequest extends Request {
   user?: { id: string; username: string };
 }
 
-export function requireAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
-  if (!req.session?.userId) {
-    return next(ApiError.unauthorized("Authentication required", "AUTH_REQUIRED"));
+export function requireAuth(
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction,
+) {
+  if (!req.user) {
+    return next(
+      ApiError.unauthorized("Authentication required", "AUTH_REQUIRED"),
+    );
+  }
+  const expectedUserId = req.get("X-Expected-User-Id");
+  if (expectedUserId && expectedUserId !== req.user.id) {
+    return next(
+      ApiError.unauthorized(
+        "Your signed-in account has changed",
+        "SESSION_USER_CHANGED",
+      ),
+    );
   }
   next();
 }
 
-export async function attachUser(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+export async function attachUser(
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction,
+) {
   if (req.session?.userId) {
     const user = await storage.getUser(req.session.userId);
     if (user) {
       req.user = { id: user.id, username: user.username };
+    } else {
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((error) => (error ? reject(error) : resolve()));
+      });
     }
   }
   next();

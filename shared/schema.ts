@@ -1,11 +1,23 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, jsonb, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  varchar,
+  jsonb,
+  timestamp,
+  index,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Resume templates available
-export const RESUME_TEMPLATES = ["modern", "classic", "minimal", "creative"] as const;
-export type ResumeTemplate = typeof RESUME_TEMPLATES[number];
+export const RESUME_TEMPLATES = [
+  "modern",
+  "classic",
+  "minimal",
+  "creative",
+] as const;
+export type ResumeTemplate = (typeof RESUME_TEMPLATES)[number];
 
 // Contact information schema
 export const contactInfoSchema = z.object({
@@ -84,19 +96,47 @@ export function pdfFilename(value: string): string {
   return `${stem || "resume"}.pdf`;
 }
 
+export const RESUME_TITLE_MAX_LENGTH = 200;
+export const resumeTitleSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(RESUME_TITLE_MAX_LENGTH);
+
+export function deriveResumeTitle(fullName: string, title?: string): string {
+  const name = fullName.trim();
+  return (
+    name
+      ? `${name}${title?.trim() ? ` - ${title.trim()}` : ""}`
+      : "Untitled Resume"
+  ).slice(0, RESUME_TITLE_MAX_LENGTH);
+}
+
 // Database table for resumes
-export const resumes = pgTable("resumes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  template: text("template").notNull().default("modern"),
-  content: jsonb("content").notNull().$type<ResumeContent>(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const resumes = pgTable(
+  "resumes",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    ownerId: varchar("owner_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    title: text("title").notNull(),
+    template: text("template").notNull().default("modern"),
+    content: jsonb("content").notNull().$type<ResumeContent>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("resumes_owner_id_idx").on(table.ownerId)],
+);
 
 export const insertResumeSchema = createInsertSchema(resumes, {
   content: resumeContentSchema,
+  title: resumeTitleSchema,
+  template: z.enum(RESUME_TEMPLATES).optional(),
 }).omit({
+  ownerId: true,
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -107,7 +147,9 @@ export type Resume = typeof resumes.$inferSelect;
 
 // Users table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

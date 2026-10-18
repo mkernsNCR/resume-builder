@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { readFile } from "node:fs/promises";
 import { PDFParse } from "pdf-parse";
 
@@ -82,4 +82,75 @@ test.describe("PDF Export", () => {
       await parser.destroy();
     }
   });
+});
+
+test("exports a long full name with a bounded title and download filename", async ({
+  page,
+}) => {
+  const fullName = "Alexandra ".repeat(30).trim();
+  await page.goto("/");
+  await page.getByTestId("button-new-resume").click();
+  await page.getByTestId("main-tab-edit").click();
+  await page.getByTestId("input-fullname").fill(fullName);
+  const exportResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/resumes/pdf") &&
+      response.request().method() === "POST",
+  );
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByTestId("button-export").click();
+  const [response, download] = await Promise.all([
+    exportResponse,
+    downloadEvent,
+  ]);
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON()).toMatchObject({
+    content: { fullName },
+    title: fullName.slice(0, 200),
+  });
+  expect(download.suggestedFilename().length).toBeLessThanOrEqual(204);
+  expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+  expect(await download.failure()).toBeNull();
+  const pdf = await readFile((await download.path())!);
+  expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
+  const parser = new PDFParse({ data: pdf });
+  try {
+    const result = await parser.getText();
+    const text = result.pages
+      .map((page) => page.text)
+      .join(" ")
+      .replace(/\s+/g, " ");
+    expect(text).toContain(fullName);
+  } finally {
+    await parser.destroy();
+  }
+});
+
+test("whitespace-only names preserve the fallback PDF filename", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByTestId("button-new-resume").click();
+  await page.getByTestId("main-tab-edit").click();
+  await page.getByTestId("input-fullname").fill("   ");
+  await page.getByTestId("input-fullname").blur();
+  await expect(page.getByTestId("button-export")).toBeEnabled();
+  const responseEvent = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/resumes/pdf") &&
+      response.request().method() === "POST",
+  );
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByTestId("button-export").click();
+  const [response, download] = await Promise.all([
+    responseEvent,
+    downloadEvent,
+  ]);
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON()).not.toHaveProperty("title");
+  expect(response.headers()["content-disposition"]).toContain(
+    'filename="resume.pdf"',
+  );
+  expect(download.suggestedFilename()).toBe("resume.pdf");
+  expect(await download.failure()).toBeNull();
 });

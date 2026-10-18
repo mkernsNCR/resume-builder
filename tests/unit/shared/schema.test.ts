@@ -7,6 +7,7 @@ import {
   educationSchema,
   skillSchema,
   pdfFilename,
+  deriveResumeTitle,
 } from "../../../shared/schema";
 
 describe("schema validation", () => {
@@ -127,18 +128,15 @@ describe("schema validation", () => {
       expect(result.success).toBe(false);
     });
 
-    it.each(["id", "name"] as const)(
-      "rejects missing required %s",
-      (field) => {
-        const validEntry = { id: "skill-1", name: "React" };
-        const entryWithoutField = Object.fromEntries(
-          Object.entries(validEntry).filter(([key]) => key !== field),
-        );
+    it.each(["id", "name"] as const)("rejects missing required %s", (field) => {
+      const validEntry = { id: "skill-1", name: "React" };
+      const entryWithoutField = Object.fromEntries(
+        Object.entries(validEntry).filter(([key]) => key !== field),
+      );
 
-        const result = skillSchema.safeParse(entryWithoutField);
-        expect(result.success).toBe(false);
-      },
-    );
+      const result = skillSchema.safeParse(entryWithoutField);
+      expect(result.success).toBe(false);
+    });
   });
 
   describe("resumeContentSchema", () => {
@@ -148,8 +146,12 @@ describe("schema validation", () => {
         title: "Engineer",
         summary: "Experienced engineer",
         contact: { email: "john@example.com" },
-        experience: [{ id: "e1", company: "Corp", position: "Dev", startDate: "2020" }],
-        education: [{ id: "ed1", institution: "MIT", degree: "BSc", startDate: "2016" }],
+        experience: [
+          { id: "e1", company: "Corp", position: "Dev", startDate: "2020" },
+        ],
+        education: [
+          { id: "ed1", institution: "MIT", degree: "BSc", startDate: "2016" },
+        ],
         skills: [{ id: "s1", name: "React" }],
       });
       expect(result.success).toBe(true);
@@ -198,4 +200,33 @@ describe("schema validation", () => {
       expect(result.success).toBe(false);
     });
   });
+});
+
+describe("production resume input boundaries", () => {
+  it("rejects unsupported templates and blank or oversized titles", () => {
+    for (const input of [
+      { title: " ", content: { fullName: "Draft" } },
+      { title: "x".repeat(201), content: { fullName: "Draft" } },
+      {
+        title: "Draft",
+        template: "unsupported",
+        content: { fullName: "Draft" },
+      },
+    ])
+      expect(insertResumeSchema.safeParse(input).success).toBe(false);
+  });
+  it("strips caller-provided ownership", () => {
+    const parsed = insertResumeSchema.parse({
+      title: "Draft",
+      ownerId: "attacker",
+      content: { fullName: "Draft" },
+    });
+    expect(parsed).not.toHaveProperty("ownerId");
+  });
+});
+
+it("derives normalized titles within the shared limit", () => {
+  expect(deriveResumeTitle("   ")).toBe("Untitled Resume");
+  expect(deriveResumeTitle(" Alice ", " Engineer ")).toBe("Alice - Engineer");
+  expect(deriveResumeTitle("A".repeat(300), "Engineer")).toHaveLength(200);
 });

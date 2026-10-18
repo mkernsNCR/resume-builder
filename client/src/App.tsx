@@ -7,11 +7,14 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import { AuthGate } from "@/components/auth-gate";
 
-function Router() {
+function Router({ onSignOut }: { onSignOut?: () => void }) {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/">
+        <Home onSignOut={onSignOut} />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -26,7 +29,15 @@ function App() {
             <div className="fixed top-2 sm:top-3 right-2 sm:right-4 z-50">
               <ThemeToggle />
             </div>
-            <Router />
+            {import.meta.env.VITE_PLATFORM_AUTH === "true" ? (
+              <Router />
+            ) : (
+              <AuthGate>
+                {(user, signOut) => (
+                  <Router key={user.id} onSignOut={signOut} />
+                )}
+              </AuthGate>
+            )}
           </div>
           <Toaster />
         </TooltipProvider>
