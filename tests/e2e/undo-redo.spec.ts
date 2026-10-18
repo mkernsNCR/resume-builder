@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test.describe("Undo and redo", () => {
   test("coalesces editor typing and handles shortcuts inside the active input", async ({

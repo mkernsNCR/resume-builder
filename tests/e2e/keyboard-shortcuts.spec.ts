@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("Keyboard shortcuts", () => {
   test("number keys switch editor sections without hijacking text input", async ({

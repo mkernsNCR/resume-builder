@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("Resume CRUD Operations", () => {
   test("should create a new resume from scratch", async ({ page }) => {

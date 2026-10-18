@@ -1,12 +1,13 @@
 import "dotenv/config";
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { env } from "./env";
-import { ApiError } from "./api-error";
+import { errorHandler } from "./error-handler";
+import { requireSameOrigin } from "./request-origin";
 import { attachUser, sessionMiddleware } from "./auth";
 import { registerAuthRoutes } from "./auth-routes";
 
@@ -17,7 +18,10 @@ const apiLimiter = rateLimit({
   max: isTestEnv ? Infinity : 300,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { code: "RATE_LIMITED", message: "Too many requests, please try again later." },
+  message: {
+    code: "RATE_LIMITED",
+    message: "Too many requests, please try again later.",
+  },
 });
 
 const uploadLimiter = rateLimit({
@@ -25,11 +29,20 @@ const uploadLimiter = rateLimit({
   max: isTestEnv ? Infinity : 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { code: "RATE_LIMITED", message: "Too many upload requests, please try again later." },
+  message: {
+    code: "RATE_LIMITED",
+    message: "Too many upload requests, please try again later.",
+  },
 });
 
 const app = express();
 const httpServer = createServer(app);
+app.disable("x-powered-by");
+app.set("trust proxy", env.TRUST_PROXY_HOPS);
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 declare module "http" {
   interface IncomingMessage {
@@ -53,10 +66,13 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc:
+          env.NODE_ENV === "production"
+            ? ["'self'"]
+            : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:"],
-        fontSrc: ["'self'", "data:"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         connectSrc: ["'self'"],
       },
     },
@@ -91,6 +107,7 @@ app.use((req, res, next) => {
 app.use("/api", apiLimiter);
 app.use("/api/upload", uploadLimiter);
 
+app.use("/api", requireSameOrigin);
 app.use(sessionMiddleware);
 app.use(attachUser);
 
@@ -98,27 +115,10 @@ app.use(attachUser);
   registerAuthRoutes(app);
   await registerRoutes(httpServer, app);
 
-  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    if (err instanceof ApiError) {
-      if (err.statusCode >= 500) {
-        console.error(`[ApiError] ${err.code}:`, err.message);
-      }
-      return res.status(err.statusCode).json({
-        code: err.code,
-        message: err.message,
-      });
-    }
-
-    console.error("Unhandled error:", err);
-    return res.status(500).json({
-      code: "INTERNAL_ERROR",
-      message: "Internal server error",
-    });
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ code: "NOT_FOUND", message: "API route not found" });
   });
+  app.use(errorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -144,4 +144,7 @@ app.use(attachUser);
       log(`serving on port ${port}`);
     },
   );
-})();
+})().catch((error: unknown) => {
+  console.error("Server startup failed:", error);
+  process.exit(1);
+});

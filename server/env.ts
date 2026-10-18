@@ -6,7 +6,8 @@ export const envSchema = z
       .string()
       .min(1, "DATABASE_URL is required")
       .url("DATABASE_URL must be a valid URL"),
-    PORT: z.coerce.number().int().positive().default(5000),
+    PORT: z.coerce.number().int().positive().max(65535).default(5000),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),

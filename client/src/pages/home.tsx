@@ -6,7 +6,12 @@ import {
   type MouseEvent,
 } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import {
+  queryClient,
+  apiRequest,
+  identityHeaders,
+  throwIfResNotOk,
+} from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +36,8 @@ import { TemplateSelector } from "@/components/template-selector";
 import { ResumePreview } from "@/components/resume-templates";
 import {
   pdfFilename,
+  deriveResumeTitle,
+  RESUME_TEMPLATES,
   type Resume,
   type ResumeContent,
   type ResumeTemplate,
@@ -51,6 +58,7 @@ import {
   Undo2,
   Redo2,
   Menu,
+  LogOut,
 } from "lucide-react";
 
 const defaultContent: ResumeContent = {
@@ -72,7 +80,7 @@ const defaultContent: ResumeContent = {
 
 type SaveRequest = {
   content: ResumeContent;
-  template: string;
+  template: ResumeTemplate;
   title: string;
   resumeId: string | null;
   createId: string | null;
@@ -88,7 +96,7 @@ function getAutosaveFingerprint(
   return JSON.stringify([template, content]);
 }
 
-export default function Home() {
+export default function Home({ onSignOut }: { onSignOut?: () => void }) {
   const { toast } = useToast();
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
   const currentResumeIdRef = useRef<string | null>(null);
@@ -120,6 +128,10 @@ export default function Home() {
   const isExportingRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
+  const suspendedRef = useRef(false);
+  const lastSavedFingerprintRef = useRef(
+    getAutosaveFingerprint(defaultContent, "modern"),
+  );
   const pendingSaveRef = useRef<SaveRequest | null>(null);
   const activeSaveControllerRef = useRef<AbortController | null>(null);
   const createResumeIdRef = useRef<string | null>(null);
@@ -178,8 +190,38 @@ export default function Home() {
     activeSaveControllerRef.current = null;
   };
 
+  useEffect(() => {
+    const suspend = () => {
+      // A cancelled response can hide a committed create. Keep its UUID until
+      // this document or account is explicitly discarded.
+      suspendedRef.current = true;
+      editorVersionRef.current += 1;
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+      pendingSaveRef.current = null;
+      activeSaveControllerRef.current?.abort();
+      activeSaveControllerRef.current = null;
+    };
+    const discard = () => {
+      suspend();
+      createResumeIdRef.current = null;
+    };
+    window.addEventListener("resume-session-suspend", suspend);
+    window.addEventListener("resume-session-discard", discard);
+    return () => {
+      discard();
+      window.removeEventListener("resume-session-suspend", suspend);
+      window.removeEventListener("resume-session-discard", discard);
+    };
+  }, []);
+
   // Fetch all resumes
-  const { data: resumes, isLoading: loadingResumes } = useQuery<Resume[]>({
+  const {
+    data: resumes,
+    isLoading: loadingResumes,
+    isError: resumesFailed,
+    refetch: retryResumes,
+  } = useQuery<Resume[]>({
     queryKey: ["/api/resumes"],
   });
 
@@ -218,6 +260,12 @@ export default function Home() {
       const result = await response.json();
       const isCurrentGeneration =
         variables.editorVersion === editorVersionRef.current;
+      if (isCurrentGeneration) {
+        lastSavedFingerprintRef.current = getAutosaveFingerprint(
+          variables.content,
+          variables.template,
+        );
+      }
       if (
         !variables.resumeId &&
         isCurrentGeneration &&
@@ -271,8 +319,10 @@ export default function Home() {
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+        credentials: "include",
+        headers: identityHeaders("/api/upload"),
       });
-      if (!response.ok) throw new Error("Upload failed");
+      await throwIfResNotOk(response);
       return response.json();
     },
     onSuccess: (data) => {
@@ -306,7 +356,11 @@ export default function Home() {
             parsed.projects?.length > 0 ? parsed.projects : content.projects,
         };
 
-        // Create a new resume with the parsed content
+        // Parsed content is unsaved work in a new document.
+        lastSavedFingerprintRef.current = getAutosaveFingerprint(
+          defaultContent,
+          template,
+        );
         advanceEditorGeneration();
         currentResumeIdRef.current = null;
         resetContent(parsedContent);
@@ -324,6 +378,8 @@ export default function Home() {
       });
     },
     onError: () => {
+      // Authentication failures are already explained by the retained-editor dialog.
+      if (suspendedRef.current) return;
       toast({
         title: "Upload failed",
         description: "Could not extract text from the file. Please try again.",
@@ -344,6 +400,10 @@ export default function Home() {
         advanceEditorGeneration();
         currentResumeIdRef.current = null;
         setCurrentResumeId(null);
+        lastSavedFingerprintRef.current = getAutosaveFingerprint(
+          defaultContent,
+          template,
+        );
         resetContent(defaultContent);
         setExtractedText("");
         setActiveEditorTab(EDITOR_TABS[0]);
@@ -356,6 +416,7 @@ export default function Home() {
     },
     onError: () => {
       setDeletingResumeId(null);
+      if (suspendedRef.current) return;
       toast({
         title: "Error",
         description: "Failed to delete resume. Please try again.",
@@ -391,6 +452,7 @@ export default function Home() {
       });
     },
     onError: () => {
+      if (suspendedRef.current) return;
       toast({
         title: "Error",
         description: "Failed to duplicate resume. Please try again.",
@@ -469,11 +531,11 @@ export default function Home() {
   );
 
   const processSaveQueue = useCallback(async () => {
-    if (saveInFlightRef.current) return;
+    if (saveInFlightRef.current || suspendedRef.current) return;
 
     saveInFlightRef.current = true;
     try {
-      while (pendingSaveRef.current) {
+      while (pendingSaveRef.current && !suspendedRef.current) {
         const request = pendingSaveRef.current;
         pendingSaveRef.current = null;
         if (request.editorVersion !== editorVersionRef.current) {
@@ -513,9 +575,8 @@ export default function Home() {
         autosaveTimerRef.current = null;
       }
 
-      const title = content.fullName
-        ? `${content.fullName}${content.title ? ` - ${content.title}` : ""}`
-        : "Untitled Resume";
+      if (suspendedRef.current) return;
+      const title = deriveResumeTitle(content.fullName, content.title);
       const resumeId = currentResumeIdRef.current;
       if (!resumeId && !createResumeIdRef.current) {
         createResumeIdRef.current = crypto.randomUUID();
@@ -534,6 +595,21 @@ export default function Home() {
     [content, template, processSaveQueue],
   );
 
+  useEffect(() => {
+    const restore = () => {
+      suspendedRef.current = false;
+      if (
+        (currentResumeIdRef.current !== null || content.fullName.trim()) &&
+        getAutosaveFingerprint(content, template) !==
+          lastSavedFingerprintRef.current
+      ) {
+        handleSave({ showToast: false });
+      }
+    };
+    window.addEventListener("resume-session-restored", restore);
+    return () => window.removeEventListener("resume-session-restored", restore);
+  }, [content, template, handleSave]);
+
   // Autosave with debouncing — saves 2s after content/template stops changing
   const skipAutosaveFingerprintRef = useRef<string | null>(
     getAutosaveFingerprint(defaultContent, "modern"),
@@ -544,7 +620,7 @@ export default function Home() {
     if (skippedFingerprint === getAutosaveFingerprint(content, template)) {
       return;
     }
-    if (!content.fullName) return;
+    if (!content.fullName || suspendedRef.current) return;
     autosaveTimerRef.current = setTimeout(() => {
       autosaveTimerRef.current = null;
       handleSave({ showToast: false });
@@ -565,10 +641,13 @@ export default function Home() {
     setIsExporting(true);
 
     try {
+      const title = content.fullName.trim()
+        ? deriveResumeTitle(content.fullName)
+        : "";
       const response = await apiRequest("POST", "/api/resumes/pdf", {
         content,
         template,
-        title: content.fullName,
+        title: title || undefined,
       });
       const pdfBlob = await response.blob();
       if (pdfBlob.size === 0) {
@@ -578,7 +657,7 @@ export default function Home() {
       const objectUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement("a");
       downloadLink.href = objectUrl;
-      downloadLink.download = pdfFilename(content.fullName);
+      downloadLink.download = pdfFilename(title);
       downloadLink.style.display = "none";
       document.body.appendChild(downloadLink);
       downloadLink.click();
@@ -590,6 +669,7 @@ export default function Home() {
         description: "Your print-ready PDF has been downloaded.",
       });
     } catch (error) {
+      if (suspendedRef.current) return;
       console.error("PDF export error:", error);
       toast({
         title: "Export failed",
@@ -661,8 +741,14 @@ export default function Home() {
 
   const loadResume = (resume: Resume) => {
     const nextContent = resume.content as ResumeContent;
-    const nextTemplate = resume.template as ResumeTemplate;
+    const nextTemplate =
+      RESUME_TEMPLATES.find((candidate) => candidate === resume.template) ??
+      "modern";
     skipAutosaveFingerprintRef.current = getAutosaveFingerprint(
+      nextContent,
+      nextTemplate,
+    );
+    lastSavedFingerprintRef.current = getAutosaveFingerprint(
       nextContent,
       nextTemplate,
     );
@@ -675,6 +761,10 @@ export default function Home() {
   };
 
   const createNewResume = () => {
+    lastSavedFingerprintRef.current = getAutosaveFingerprint(
+      defaultContent,
+      "modern",
+    );
     skipAutosaveFingerprintRef.current = getAutosaveFingerprint(
       defaultContent,
       "modern",
@@ -728,6 +818,17 @@ export default function Home() {
                       <div className="text-center py-8 text-muted-foreground">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 opacity-50" />
                         <p className="text-xs">Loading resumes...</p>
+                      </div>
+                    ) : resumesFailed ? (
+                      <div role="alert" className="p-3 text-sm">
+                        <p>Unable to load resumes.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void retryResumes()}
+                        >
+                          Retry
+                        </Button>
                       </div>
                     ) : resumes && resumes.length > 0 ? (
                       resumes.map((resume) => (
@@ -834,6 +935,18 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 pr-10 sm:pr-12 shrink-0">
+            {onSignOut && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onSignOut}
+                aria-label="Sign out"
+                data-testid="button-sign-out"
+                className="h-8 w-8"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -908,6 +1021,17 @@ export default function Home() {
                 <div className="text-center py-8 text-muted-foreground">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 opacity-50" />
                   <p className="text-xs">Loading resumes...</p>
+                </div>
+              ) : resumesFailed ? (
+                <div role="alert" className="p-3 text-sm">
+                  <p>Unable to load resumes.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void retryResumes()}
+                  >
+                    Retry
+                  </Button>
                 </div>
               ) : resumes && resumes.length > 0 ? (
                 resumes.map((resume) => (
@@ -1101,6 +1225,8 @@ export default function Home() {
                           size="sm"
                           onClick={() => {
                             skipAutosaveFingerprintRef.current =
+                              getAutosaveFingerprint(defaultContent, template);
+                            lastSavedFingerprintRef.current =
                               getAutosaveFingerprint(defaultContent, template);
                             advanceEditorGeneration();
                             currentResumeIdRef.current = null;

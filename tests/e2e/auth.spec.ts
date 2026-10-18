@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import { Pool } from "pg";
+import { testDatabaseUrl } from "./test-database";
 
 const TEST_PASSWORD = "TestPassword123!";
 const createdUsernames = new Set<string>();
@@ -36,7 +37,7 @@ test.describe("Authentication", () => {
 
     const pool = new Pool({
       connectionString:
-        process.env.DATABASE_URL || "postgresql://localhost:5432/resume_builder",
+        testDatabaseUrl,
     });
     const usernames = [...createdUsernames];
 

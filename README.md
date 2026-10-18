@@ -12,7 +12,7 @@ A modern, full-stack resume builder application that allows users to create, edi
 - **Resume Management** - Save, load, and manage multiple resumes with database persistence
 - **Dark/Light Mode** - System-aware theme toggle with smooth transitions
 - **Responsive Design** - Works seamlessly on desktop and mobile devices
-- **Auto-seeding** - Sample resumes automatically loaded for new databases
+- **Private Accounts** - Sign in to manage resumes isolated to your account
 
 ## 🛠 Tech Stack
 
@@ -109,6 +109,9 @@ A modern, full-stack resume builder application that allows users to create, edi
 ## 📖 Usage
 
 ### Creating a Resume
+
+Register an account or sign in first. Existing installations must apply the
+[ownership migration](docs/production-hardening.md) before running this version.
 
 1. **Upload an existing resume** - Drag and drop or click to upload a PDF/DOCX file. The system will extract text and auto-populate fields.
 2. **Or start fresh** - Click "Create Resume Manually" to begin with a blank template.
@@ -274,7 +277,7 @@ npm run test:unit
 npm run test:unit:watch
 
 # Run e2e tests
-npm test
+DATABASE_URL=postgresql://localhost:5432/resume_builder_test npm test
 
 # Run e2e tests with UI
 npm run test:ui
@@ -289,6 +292,10 @@ npm run test:ui
 - Path aliases: `@/` → `client/src/`, `@shared/` → `shared/`
 
 ## 🚢 Deployment
+
+Follow the [production hardening rollout](docs/production-hardening.md) for
+existing data, account ownership, TLS proxy configuration and verification.
+All resume and upload endpoints require a valid session.
 
 ### Environment Variables
 

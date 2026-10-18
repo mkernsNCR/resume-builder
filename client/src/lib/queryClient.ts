@@ -1,9 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-async function throwIfResNotOk(res: Response) {
+let expectedUserId: string | null = null;
+export function setExpectedUserId(value: string | null) {
+  expectedUserId = value;
+}
+export function identityHeaders(url: string): Record<string, string> {
+  return expectedUserId && /^\/api\/(resumes(?:\/|$)|upload(?:\/|$))/.test(url)
+    ? { "X-Expected-User-Id": expectedUserId }
+    : {};
+}
+
+export async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    if (res.status === 401 && /\/api\/(resumes|upload)(?:\/|$)/.test(res.url)) {
+      window.dispatchEvent(new Event("resume-session-suspend"));
+      window.dispatchEvent(new Event("resume-auth-expired"));
+    }
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let message = text;
+    try {
+      message = JSON.parse(text).message || text;
+    } catch {
+      /* Plain-text error response. */
+    }
+    throw new Error(message);
   }
 }
 
@@ -15,7 +35,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...identityHeaders(url),
+      ...(data ? { "Content-Type": "application/json" } : {}),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
     signal,
@@ -30,9 +53,12 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+  async ({ queryKey, signal }) => {
+    const url = queryKey.join("/");
+    const res = await fetch(url, {
       credentials: "include",
+      headers: identityHeaders(url),
+      signal,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
